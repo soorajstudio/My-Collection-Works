@@ -61,7 +61,7 @@ const RootHandler: React.FC = () => {
 
 export function App() {
   return (
-    <BrowserRouter>
+    <BrowserRouter basename={import.meta.env.BASE_URL}>
       <ThemeProvider>
         <AuthProvider>
           <ToastProvider>
