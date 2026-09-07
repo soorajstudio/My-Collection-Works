@@ -39,8 +39,9 @@ export const ProjectFormModal: React.FC<ProjectFormModalProps> = ({
   const [videoEmbedUrl, setVideoEmbedUrl] = useState('');
 
   const [isUploadingIcon, setIsUploadingIcon] = useState(false);
+  const [iconUploadProgress, setIconUploadProgress] = useState(0);
   const [isUploadingApk, setIsUploadingApk] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState(0);
+  const [apkUploadProgress, setApkUploadProgress] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
 
@@ -89,18 +90,21 @@ export const ProjectFormModal: React.FC<ProjectFormModalProps> = ({
     const file = e.target.files?.[0];
     if (!file) return;
     setIsUploadingIcon(true);
+    setIconUploadProgress(0);
     setError('');
     try {
       const res = await storageService.uploadFile(file, {
         category: 'projects/icons',
-        onProgress: setUploadProgress,
+        onProgress: (pct) => setIconUploadProgress(pct),
       });
       setAppIconUrl(res.fileUrl);
       setAppIconKey(res.fileKey);
+      setIconUploadProgress(100);
     } catch (err: any) {
       setError(err.message || 'Failed to upload icon.');
     } finally {
       setIsUploadingIcon(false);
+      e.target.value = '';
     }
   };
 
@@ -108,18 +112,21 @@ export const ProjectFormModal: React.FC<ProjectFormModalProps> = ({
     const file = e.target.files?.[0];
     if (!file) return;
     setIsUploadingApk(true);
+    setApkUploadProgress(0);
     setError('');
     try {
       const res = await storageService.uploadFile(file, {
         category: 'projects/apks',
-        onProgress: setUploadProgress,
+        onProgress: (pct) => setApkUploadProgress(pct),
       });
       setApkFileName(res.fileName);
       setApkFileKey(res.fileKey);
+      setApkUploadProgress(100);
     } catch (err: any) {
       setError(err.message || 'Failed to upload APK file.');
     } finally {
       setIsUploadingApk(false);
+      e.target.value = '';
     }
   };
 
@@ -324,8 +331,22 @@ export const ProjectFormModal: React.FC<ProjectFormModalProps> = ({
                   className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700 cursor-pointer transition-colors"
                 >
                   <UploadCloud className="w-3.5 h-3.5" />
-                  <span>{isUploadingIcon ? `Uploading (${uploadProgress}%)` : appIconUrl ? 'Change Icon' : 'Upload Icon'}</span>
+                  <span>{isUploadingIcon ? `Uploading (${iconUploadProgress}%)` : appIconUrl ? 'Change Icon' : 'Upload Icon'}</span>
                 </label>
+                {isUploadingIcon && (
+                  <div className="w-full space-y-1 pt-1">
+                    <div className="flex items-center justify-between text-[11px] text-indigo-600 dark:text-indigo-400 font-medium">
+                      <span>Uploading app icon...</span>
+                      <span>{iconUploadProgress}%</span>
+                    </div>
+                    <div className="w-full h-1.5 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-indigo-600 dark:bg-indigo-500 rounded-full transition-all duration-150 ease-out"
+                        style={{ width: `${iconUploadProgress}%` }}
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -348,9 +369,23 @@ export const ProjectFormModal: React.FC<ProjectFormModalProps> = ({
                   className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700 cursor-pointer transition-colors"
                 >
                   <UploadCloud className="w-3.5 h-3.5" />
-                  <span>{isUploadingApk ? `Uploading (${uploadProgress}%)` : apkFileName ? 'Replace APK' : 'Upload APK'}</span>
+                  <span>{isUploadingApk ? `Uploading (${apkUploadProgress}%)` : apkFileName ? 'Replace APK' : 'Upload APK'}</span>
                 </label>
-                {apkFileName && (
+                {isUploadingApk && (
+                  <div className="w-full space-y-1 pt-1">
+                    <div className="flex items-center justify-between text-[11px] text-indigo-600 dark:text-indigo-400 font-medium">
+                      <span>Uploading APK build...</span>
+                      <span>{apkUploadProgress}%</span>
+                    </div>
+                    <div className="w-full h-1.5 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-indigo-600 dark:bg-indigo-500 rounded-full transition-all duration-150 ease-out"
+                        style={{ width: `${apkUploadProgress}%` }}
+                      />
+                    </div>
+                  </div>
+                )}
+                {apkFileName && !isUploadingApk && (
                   <p className="text-[11px] text-emerald-600 dark:text-emerald-400 flex items-center gap-1 mt-1 truncate">
                     <CheckCircle2 className="w-3 h-3 shrink-0" />
                     <span className="truncate">{apkFileName}</span>

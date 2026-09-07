@@ -77,46 +77,88 @@ export const r2StorageService = {
 
   async uploadFile(file: File, options: UploadOptions): Promise<UploadResult> {
     this.validateFile(file, options.category);
+    options.onProgress?.(0);
 
-    // 1. If connected to live Appwrite without R2 signer, upload directly to Appwrite Storage bucket:
+    // 1. If connected to live Appwrite without R2 signer, upload directly with real XMLHttpRequest progress:
     if (!APPWRITE_CONFIG.isMock && !APPWRITE_CONFIG.r2SignerEndpoint) {
+      const endpoint = import.meta.env.VITE_APPWRITE_ENDPOINT || 'https://cloud.appwrite.io/v1';
+      const projectId = import.meta.env.VITE_APPWRITE_PROJECT_ID || '6a9e9053003be1fde2dc';
+      const fileId = ID.unique();
+
+      const formData = new FormData();
+      formData.append('fileId', fileId);
+      formData.append('file', file);
+      formData.append('permissions[]', 'read("any")');
+
       try {
-        const fileId = ID.unique();
-        options.onProgress?.(30);
-        const uploaded = await storage.createFile('vault_files', fileId, file);
-        options.onProgress?.(80);
+        return await new Promise<UploadResult>((resolve, reject) => {
+          const xhr = new XMLHttpRequest();
+          xhr.open('POST', `${endpoint}/storage/buckets/vault_files/files`, true);
+          xhr.setRequestHeader('X-Appwrite-Project', projectId);
+          xhr.setRequestHeader('X-Appwrite-Response-Format', '1.0.0');
+          xhr.withCredentials = true;
 
-        const endpoint = import.meta.env.VITE_APPWRITE_ENDPOINT || 'https://cloud.appwrite.io/v1';
-        const projectId = import.meta.env.VITE_APPWRITE_PROJECT_ID || '6a9e9053003be1fde2dc';
-        const viewUrl = `${endpoint}/storage/buckets/vault_files/files/${uploaded.$id}/view?project=${projectId}`;
+          xhr.upload.onprogress = (e) => {
+            if (e.lengthComputable && options.onProgress) {
+              const percent = Math.min(99, Math.round((e.loaded / e.total) * 100));
+              options.onProgress(percent);
+            }
+          };
 
-        options.onProgress?.(100);
-        return {
-          fileKey: `appwrite://${uploaded.$id}`,
-          fileUrl: viewUrl,
-          fileName: file.name,
-          fileSize: file.size,
-        };
-      } catch (err: any) {
-        console.error('Appwrite Storage upload failed:', err);
-        throw new Error('Failed to upload file: ' + (err.message || 'Unknown error'));
+          xhr.onload = () => {
+            if (xhr.status >= 200 && xhr.status < 300) {
+              options.onProgress?.(100);
+              const uploaded = JSON.parse(xhr.responseText);
+              const viewUrl = `${endpoint}/storage/buckets/vault_files/files/${uploaded.$id}/view?project=${projectId}`;
+              resolve({
+                fileKey: `appwrite://${uploaded.$id}`,
+                fileUrl: viewUrl,
+                fileName: file.name,
+                fileSize: file.size,
+              });
+            } else {
+              reject(new Error(`Upload failed (${xhr.status}): ${xhr.responseText}`));
+            }
+          };
+
+          xhr.onerror = () => reject(new Error('Network error during file upload'));
+          xhr.send(formData);
+        });
+      } catch {
+        // Safe fallback using Appwrite SDK with dynamic smooth progress
+        let currentProgress = 5;
+        options.onProgress?.(currentProgress);
+        const progressTimer = setInterval(() => {
+          if (currentProgress < 90) {
+            currentProgress += 5;
+            options.onProgress?.(currentProgress);
+          }
+        }, 100);
+
+        try {
+          const uploaded = await storage.createFile('vault_files', fileId, file);
+          clearInterval(progressTimer);
+          options.onProgress?.(100);
+          const viewUrl = `${endpoint}/storage/buckets/vault_files/files/${uploaded.$id}/view?project=${projectId}`;
+          return {
+            fileKey: `appwrite://${uploaded.$id}`,
+            fileUrl: viewUrl,
+            fileName: file.name,
+            fileSize: file.size,
+          };
+        } catch (err: any) {
+          clearInterval(progressTimer);
+          throw new Error('Failed to upload file: ' + (err.message || 'Unknown error'));
+        }
       }
     }
 
     // 2. If in mock or standalone demo mode
     if (APPWRITE_CONFIG.isMock) {
-      // Simulate realistic upload progress
-      const totalSteps = 10;
-      for (let i = 1; i <= totalSteps; i++) {
-        await new Promise((r) => setTimeout(r, 40));
-        options.onProgress?.(Math.round((i / totalSteps) * 100));
-      }
-
-      const generatedKey = `${options.category}/${Date.now()}_${file.name.replace(/\s+/g, '_')}`;
-
-      // Convert images to Base64 Data URLs so they persist in localStorage across browser reloads
+      options.onProgress?.(5);
       const isImage = file.type.startsWith('image/');
       let fileUrl = '';
+
       if (isImage) {
         fileUrl = await new Promise<string>((resolve) => {
           const reader = new FileReader();
@@ -128,6 +170,14 @@ export const r2StorageService = {
         fileUrl = URL.createObjectURL(file);
       }
 
+      // Smooth, realistic upload percentage progression: 0% -> 100%
+      const progressionSteps = [15, 32, 54, 75, 91, 100];
+      for (const pct of progressionSteps) {
+        await new Promise((r) => setTimeout(r, 45));
+        options.onProgress?.(pct);
+      }
+
+      const generatedKey = `${options.category}/${Date.now()}_${file.name.replace(/\s+/g, '_')}`;
       return {
         fileKey: generatedKey,
         fileUrl,
@@ -136,8 +186,8 @@ export const r2StorageService = {
       };
     }
 
-    // Live Cloudflare R2 Upload Flow via Presigned PUT URL
-    options.onProgress?.(10);
+    // 3. Live Cloudflare R2 Upload Flow via Presigned PUT URL
+    options.onProgress?.(0);
     const presignedRes = await fetch(APPWRITE_CONFIG.r2SignerEndpoint + '/upload-url', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -154,7 +204,7 @@ export const r2StorageService = {
 
     const { uploadUrl, fileKey, publicUrl } = await presignedRes.json();
 
-    // Direct upload to Cloudflare R2 with XMLHttpRequest for progress tracking
+    // Direct upload to Cloudflare R2 with XMLHttpRequest for real progress tracking
     return new Promise((resolve, reject) => {
       const xhr = new XMLHttpRequest();
       xhr.open('PUT', uploadUrl, true);
@@ -162,13 +212,14 @@ export const r2StorageService = {
 
       xhr.upload.onprogress = (e) => {
         if (e.lengthComputable && options.onProgress) {
-          const percent = Math.round((e.loaded / e.total) * 100);
+          const percent = Math.min(99, Math.round((e.loaded / e.total) * 100));
           options.onProgress(percent);
         }
       };
 
       xhr.onload = () => {
         if (xhr.status >= 200 && xhr.status < 300) {
+          options.onProgress?.(100);
           resolve({
             fileKey,
             fileUrl: publicUrl || `${APPWRITE_CONFIG.r2PublicUrl}/${fileKey}`,

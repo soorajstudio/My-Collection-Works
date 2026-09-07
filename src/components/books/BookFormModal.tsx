@@ -58,8 +58,9 @@ export const BookFormModal: React.FC<BookFormModalProps> = ({
   const [autoFillNotice, setAutoFillNotice] = useState('');
 
   const [isUploadingCover, setIsUploadingCover] = useState(false);
+  const [coverUploadProgress, setCoverUploadProgress] = useState(0);
   const [isUploadingPdf, setIsUploadingPdf] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState(0);
+  const [pdfUploadProgress, setPdfUploadProgress] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
 
@@ -151,18 +152,21 @@ export const BookFormModal: React.FC<BookFormModalProps> = ({
     const file = e.target.files?.[0];
     if (!file) return;
     setIsUploadingCover(true);
+    setCoverUploadProgress(0);
     setError('');
     try {
       const res = await storageService.uploadFile(file, {
         category: 'books/covers',
-        onProgress: setUploadProgress,
+        onProgress: (pct) => setCoverUploadProgress(pct),
       });
       setCoverFileUrl(res.fileUrl);
       setCoverFileKey(res.fileKey);
+      setCoverUploadProgress(100);
     } catch (err: any) {
       setError(err.message || 'Failed to upload cover image.');
     } finally {
       setIsUploadingCover(false);
+      e.target.value = '';
     }
   };
 
@@ -170,18 +174,21 @@ export const BookFormModal: React.FC<BookFormModalProps> = ({
     const file = e.target.files?.[0];
     if (!file) return;
     setIsUploadingPdf(true);
+    setPdfUploadProgress(0);
     setError('');
     try {
       const res = await storageService.uploadFile(file, {
         category: 'books/pdfs',
-        onProgress: setUploadProgress,
+        onProgress: (pct) => setPdfUploadProgress(pct),
       });
       setPdfFileName(res.fileName);
       setPdfFileKey(res.fileKey);
+      setPdfUploadProgress(100);
     } catch (err: any) {
       setError(err.message || 'Failed to upload PDF.');
     } finally {
       setIsUploadingPdf(false);
+      e.target.value = '';
     }
   };
 
@@ -522,7 +529,7 @@ export const BookFormModal: React.FC<BookFormModalProps> = ({
                     className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700 cursor-pointer transition-colors"
                   >
                     <UploadCloud className="w-3.5 h-3.5" />
-                    <span>{isUploadingCover ? `Uploading (${uploadProgress}%)` : coverFileUrl ? 'Replace File' : 'Upload Image'}</span>
+                    <span>{isUploadingCover ? `Uploading (${coverUploadProgress}%)` : coverFileUrl ? 'Replace File' : 'Upload Image'}</span>
                   </label>
 
                   <button
@@ -536,6 +543,21 @@ export const BookFormModal: React.FC<BookFormModalProps> = ({
 
                   <span className="text-[10px] text-slate-500">JPG, PNG, WebP</span>
                 </div>
+
+                {isUploadingCover && (
+                  <div className="w-full space-y-1 pt-0.5">
+                    <div className="flex items-center justify-between text-[11px] text-indigo-600 dark:text-indigo-400 font-medium">
+                      <span>Uploading cover image...</span>
+                      <span>{coverUploadProgress}%</span>
+                    </div>
+                    <div className="w-full h-1.5 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-indigo-600 dark:bg-indigo-500 rounded-full transition-all duration-150 ease-out"
+                        style={{ width: `${coverUploadProgress}%` }}
+                      />
+                    </div>
+                  </div>
+                )}
 
                 {isCustomUrlMode && (
                   <div className="pt-0.5 animate-in fade-in duration-200">
@@ -655,9 +677,23 @@ export const BookFormModal: React.FC<BookFormModalProps> = ({
                   className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700 cursor-pointer transition-colors"
                 >
                   <UploadCloud className="w-3.5 h-3.5" />
-                  <span>{isUploadingPdf ? `Uploading (${uploadProgress}%)` : pdfFileName ? 'Replace PDF' : 'Upload PDF'}</span>
+                  <span>{isUploadingPdf ? `Uploading (${pdfUploadProgress}%)` : pdfFileName ? 'Replace PDF' : 'Upload PDF'}</span>
                 </label>
-                {pdfFileName && (
+                {isUploadingPdf && (
+                  <div className="w-full space-y-1 pt-1">
+                    <div className="flex items-center justify-between text-[11px] text-indigo-600 dark:text-indigo-400 font-medium">
+                      <span>Uploading PDF document...</span>
+                      <span>{pdfUploadProgress}%</span>
+                    </div>
+                    <div className="w-full h-1.5 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-indigo-600 dark:bg-indigo-500 rounded-full transition-all duration-150 ease-out"
+                        style={{ width: `${pdfUploadProgress}%` }}
+                      />
+                    </div>
+                  </div>
+                )}
+                {pdfFileName && !isUploadingPdf && (
                   <p className="text-[11px] text-emerald-600 dark:text-emerald-400 flex items-center gap-1 mt-1 truncate">
                     <CheckCircle2 className="w-3 h-3 shrink-0" />
                     <span className="truncate">{pdfFileName}</span>
