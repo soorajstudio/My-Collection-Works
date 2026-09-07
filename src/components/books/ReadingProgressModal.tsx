@@ -96,6 +96,7 @@ export const ReadingProgressModal: React.FC<ReadingProgressModalProps> = ({
             src={book.coverFileUrl || 'https://images.unsplash.com/photo-1543002588-bfa74002ed7e?w=120&auto=format&fit=crop&q=80'}
             alt=""
             className="w-10 h-14 object-cover rounded-lg shrink-0"
+            style={{ objectPosition: book.coverImagePosition || 'center' }}
           />
           <div className="min-w-0 flex-1">
             <h4 className="text-sm font-bold text-slate-900 dark:text-white truncate">{book.title}</h4>

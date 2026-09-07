@@ -13,6 +13,9 @@ import {
   Download,
   ExternalLink,
   RefreshCw,
+  Focus,
+  ArrowUp,
+  ArrowDown,
 } from 'lucide-react';
 import { booksService, syncMangaManhwaChapters } from '../../services';
 import { BookWithReadingState } from '../../types/book.types';
@@ -31,6 +34,7 @@ export const BookDetailPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isProgressModalOpen, setIsProgressModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isPositionPickerOpen, setIsPositionPickerOpen] = useState(false);
   const [isSyncingChapters, setIsSyncingChapters] = useState(false);
   const { success, error } = useToast();
 
@@ -120,6 +124,18 @@ export const BookDetailPage: React.FC = () => {
     }
   };
 
+  const handleUpdateCoverPosition = async (newPos: string) => {
+    if (!book) return;
+    try {
+      const updated = await booksService.updateBook(book.id, { coverImagePosition: newPos });
+      setBook(updated);
+      success('Cover position updated', `Aligned to ${newPos}`);
+      setIsPositionPickerOpen(false);
+    } catch (err: any) {
+      error('Failed to update cover position', err.message);
+    }
+  };
+
   if (isLoading || !book) {
     return (
       <div className="space-y-6">
@@ -188,20 +204,109 @@ export const BookDetailPage: React.FC = () => {
         
         {/* Cover Column */}
         <div className="md:col-span-4 space-y-4">
-          <div className="relative aspect-[3/4] w-full rounded-2xl overflow-hidden glass-panel border border-slate-200 dark:border-white/10 shadow-xl dark:shadow-2xl">
+          <div className="relative aspect-[3/4] w-full rounded-2xl overflow-hidden glass-panel border border-slate-200 dark:border-white/10 shadow-xl dark:shadow-2xl group">
             <img
               src={book.coverFileUrl || 'https://images.unsplash.com/photo-1543002588-bfa74002ed7e?w=600&auto=format&fit=crop&q=80'}
               alt={book.title}
-              className="w-full h-full object-cover"
+              className="w-full h-full object-cover transition-all duration-300"
+              style={{ objectPosition: book.coverImagePosition || 'center' }}
             />
-            <div className="absolute top-3 right-3">
+
+            {/* Quick Position Control Button */}
+            <div className="absolute top-3 left-3 z-10">
+              <button
+                type="button"
+                onClick={() => setIsPositionPickerOpen(!isPositionPickerOpen)}
+                title="Adjust Cover Alignment"
+                className="py-1.5 px-2.5 rounded-full glass-panel border border-white/25 hover:border-indigo-400 text-slate-200 hover:text-white transition-all shadow-lg flex items-center gap-1.5 text-xs bg-slate-950/70 backdrop-blur-md"
+              >
+                <Focus className="w-3.5 h-3.5 text-indigo-400" />
+                <span className="capitalize font-medium text-[11px]">{book.coverImagePosition || 'center'}</span>
+              </button>
+            </div>
+
+            {/* Top Right: Wishlist Toggle */}
+            <div className="absolute top-3 right-3 z-10">
               <button
                 onClick={handleToggleWishlist}
-                className="p-2.5 rounded-full glass-panel border border-white/15 hover:border-rose-500/40 text-slate-300 hover:text-rose-400 transition-all shadow-lg"
+                className="p-2.5 rounded-full glass-panel border border-white/15 hover:border-rose-500/40 text-slate-300 hover:text-rose-400 transition-all shadow-lg bg-slate-950/50 backdrop-blur-md"
               >
                 <Heart className={`w-4 h-4 ${wishlist ? 'fill-rose-400 text-rose-400' : ''}`} />
               </button>
             </div>
+
+            {/* Position Picker Popover Panel */}
+            {isPositionPickerOpen && (
+              <div className="absolute inset-x-3 top-14 p-3.5 rounded-xl bg-slate-950/95 backdrop-blur-xl border border-white/20 shadow-2xl space-y-3 z-20 animate-in fade-in zoom-in-95 duration-150 text-slate-200">
+                <div className="flex items-center justify-between text-xs font-semibold pb-1.5 border-b border-white/10">
+                  <span className="flex items-center gap-1 text-indigo-400">
+                    <Focus className="w-3.5 h-3.5" />
+                    <span>Align Cover Image</span>
+                  </span>
+                  <button
+                    onClick={() => setIsPositionPickerOpen(false)}
+                    className="text-slate-400 hover:text-white text-xs"
+                  >
+                    ✕
+                  </button>
+                </div>
+
+                {/* Presets */}
+                <div className="grid grid-cols-3 gap-1.5">
+                  {[
+                    { id: 'top', label: 'Top', icon: <ArrowUp className="w-3 h-3" /> },
+                    { id: 'center', label: 'Center', icon: <Focus className="w-3 h-3" /> },
+                    { id: 'bottom', label: 'Bottom', icon: <ArrowDown className="w-3 h-3" /> },
+                  ].map((preset) => (
+                    <button
+                      key={preset.id}
+                      type="button"
+                      onClick={() => handleUpdateCoverPosition(preset.id)}
+                      className={`flex items-center justify-center gap-1 py-1 px-2 rounded-lg text-xs font-medium transition-colors ${
+                        (book.coverImagePosition || 'center') === preset.id
+                          ? 'bg-indigo-600 text-white shadow-sm'
+                          : 'bg-white/10 hover:bg-white/20 text-slate-200'
+                      }`}
+                    >
+                      {preset.icon}
+                      <span>{preset.label}</span>
+                    </button>
+                  ))}
+                </div>
+
+                {/* 9-Point Alignment Grid */}
+                <div className="pt-1 flex items-center justify-between">
+                  <span className="text-[10px] text-slate-400">9-Point Grid:</span>
+                  <div className="grid grid-cols-3 gap-1 p-1 bg-slate-900 rounded-md border border-white/10">
+                    {[
+                      { id: 'left top', title: 'Top Left' },
+                      { id: 'top', title: 'Top Center' },
+                      { id: 'right top', title: 'Top Right' },
+                      { id: 'left', title: 'Center Left' },
+                      { id: 'center', title: 'Center' },
+                      { id: 'right', title: 'Center Right' },
+                      { id: 'left bottom', title: 'Bottom Left' },
+                      { id: 'bottom', title: 'Bottom Center' },
+                      { id: 'right bottom', title: 'Bottom Right' },
+                    ].map((pos) => (
+                      <button
+                        key={pos.id}
+                        type="button"
+                        title={pos.title}
+                        onClick={() => handleUpdateCoverPosition(pos.id)}
+                        className={`w-4 h-4 rounded-xs transition-all flex items-center justify-center ${
+                          (book.coverImagePosition || 'center') === pos.id
+                            ? 'bg-indigo-600 ring-1 ring-indigo-400'
+                            : 'bg-slate-700 hover:bg-indigo-400/50'
+                        }`}
+                      >
+                        <span className={`w-1 h-1 rounded-full ${(book.coverImagePosition || 'center') === pos.id ? 'bg-white' : 'bg-transparent'}`} />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* PDF Action Box (Cloudflare R2) */}

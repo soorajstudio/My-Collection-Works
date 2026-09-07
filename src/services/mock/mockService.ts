@@ -211,6 +211,7 @@ export const mockBooksService = {
       language: data.language || 'English',
       coverFileUrl: data.coverFileUrl || 'https://images.unsplash.com/photo-1543002588-bfa74002ed7e?w=600&auto=format&fit=crop&q=80',
       coverFileKey: data.coverFileKey,
+      coverImagePosition: data.coverImagePosition || 'center',
       pdfFileKey: data.pdfFileKey,
       pdfFileName: data.pdfFileName,
       pdfFileUrl: data.pdfFileUrl,

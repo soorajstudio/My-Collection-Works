@@ -157,6 +157,7 @@ export const GlobalSearchModal: React.FC<GlobalSearchModalProps> = ({ isOpen, on
                                 src={b.coverFileUrl || 'https://images.unsplash.com/photo-1543002588-bfa74002ed7e?w=100&auto=format&fit=crop&q=80'}
                                 alt=""
                                 className="w-8 h-10 rounded object-cover shrink-0"
+                                style={{ objectPosition: b.coverImagePosition || 'center' }}
                               />
                               <div className="min-w-0">
                                 <h4 className="text-xs font-bold text-slate-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-300 truncate">

@@ -98,6 +98,7 @@ async function init() {
   await createAttr('books', 'string', 'language', { size: 64, required: true });
   await createAttr('books', 'string', 'coverFileUrl', { size: 2048 });
   await createAttr('books', 'string', 'coverFileKey', { size: 512 });
+  await createAttr('books', 'string', 'coverImagePosition', { size: 64, default: 'center' });
   await createAttr('books', 'string', 'pdfFileUrl', { size: 2048 });
   await createAttr('books', 'string', 'pdfFileKey', { size: 512 });
   await createAttr('books', 'string', 'pdfFileName', { size: 255 });

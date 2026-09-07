@@ -55,6 +55,7 @@ export const liveBooksService = {
         language: doc.language,
         coverFileUrl: doc.coverFileUrl,
         coverFileKey: doc.coverFileKey,
+        coverImagePosition: doc.coverImagePosition || 'center',
         pdfFileUrl: doc.pdfFileUrl,
         pdfFileKey: doc.pdfFileKey,
         pdfFileName: doc.pdfFileName,
@@ -129,6 +130,7 @@ export const liveBooksService = {
         language: doc.language,
         coverFileUrl: doc.coverFileUrl,
         coverFileKey: doc.coverFileKey,
+        coverImagePosition: doc.coverImagePosition || 'center',
         pdfFileUrl: doc.pdfFileUrl,
         pdfFileKey: doc.pdfFileKey,
         pdfFileName: doc.pdfFileName,
@@ -152,27 +154,47 @@ export const liveBooksService = {
         ]
       : [];
 
-    const bookDoc = await databases.createDocument(
-      APPWRITE_CONFIG.databaseId,
-      APPWRITE_CONFIG.collections.books,
-      ID.unique(),
-      {
-        ownerId: data.ownerId,
-        title: data.title,
-        author: data.author,
-        description: data.description || '',
-        category: data.category,
-        language: data.language,
-        coverFileUrl: data.coverFileUrl || null,
-        coverFileKey: data.coverFileKey || null,
-        pdfFileUrl: data.pdfFileUrl || null,
-        pdfFileKey: data.pdfFileKey || null,
-        pdfFileName: data.pdfFileName || null,
-        totalPages: data.totalPages ?? null,
-        totalChapters: data.totalChapters ?? null,
-      },
-      permissions
-    );
+    const createPayload: Record<string, any> = {
+      ownerId: data.ownerId,
+      title: data.title,
+      author: data.author,
+      description: data.description || '',
+      category: data.category,
+      language: data.language,
+      coverFileUrl: data.coverFileUrl || null,
+      coverFileKey: data.coverFileKey || null,
+      coverImagePosition: data.coverImagePosition || 'center',
+      pdfFileUrl: data.pdfFileUrl || null,
+      pdfFileKey: data.pdfFileKey || null,
+      pdfFileName: data.pdfFileName || null,
+      totalPages: data.totalPages ?? null,
+      totalChapters: data.totalChapters ?? null,
+    };
+
+    let bookDoc;
+    try {
+      bookDoc = await databases.createDocument(
+        APPWRITE_CONFIG.databaseId,
+        APPWRITE_CONFIG.collections.books,
+        ID.unique(),
+        createPayload,
+        permissions
+      );
+    } catch (createErr: any) {
+      // Graceful fallback if coverImagePosition attribute doesn't exist on remote collection yet
+      if (createErr?.message?.includes('coverImagePosition')) {
+        delete createPayload.coverImagePosition;
+        bookDoc = await databases.createDocument(
+          APPWRITE_CONFIG.databaseId,
+          APPWRITE_CONFIG.collections.books,
+          ID.unique(),
+          createPayload,
+          permissions
+        );
+      } else {
+        throw createErr;
+      }
+    }
 
     // Create associated initial reading state
     const stateDoc = await databases.createDocument(
@@ -202,6 +224,7 @@ export const liveBooksService = {
       language: bookDoc.language,
       coverFileUrl: bookDoc.coverFileUrl,
       coverFileKey: bookDoc.coverFileKey,
+      coverImagePosition: bookDoc.coverImagePosition || data.coverImagePosition || 'center',
       pdfFileUrl: bookDoc.pdfFileUrl,
       pdfFileKey: bookDoc.pdfFileKey,
       pdfFileName: bookDoc.pdfFileName,
@@ -225,25 +248,43 @@ export const liveBooksService = {
   },
 
   async updateBook(id: string, data: Partial<Book>): Promise<BookWithReadingState> {
-    const bookDoc = await databases.updateDocument(
-      APPWRITE_CONFIG.databaseId,
-      APPWRITE_CONFIG.collections.books,
-      id,
-      {
-        title: data.title,
-        author: data.author,
-        description: data.description,
-        category: data.category,
-        language: data.language,
-        coverFileUrl: data.coverFileUrl,
-        coverFileKey: data.coverFileKey,
-        pdfFileUrl: data.pdfFileUrl,
-        pdfFileKey: data.pdfFileKey,
-        pdfFileName: data.pdfFileName,
-        totalPages: data.totalPages,
-        totalChapters: data.totalChapters,
+    const updatePayload: Record<string, any> = {
+      ...(data.title !== undefined && { title: data.title }),
+      ...(data.author !== undefined && { author: data.author }),
+      ...(data.description !== undefined && { description: data.description }),
+      ...(data.category !== undefined && { category: data.category }),
+      ...(data.language !== undefined && { language: data.language }),
+      ...(data.coverFileUrl !== undefined && { coverFileUrl: data.coverFileUrl }),
+      ...(data.coverFileKey !== undefined && { coverFileKey: data.coverFileKey }),
+      ...(data.coverImagePosition !== undefined && { coverImagePosition: data.coverImagePosition }),
+      ...(data.pdfFileUrl !== undefined && { pdfFileUrl: data.pdfFileUrl }),
+      ...(data.pdfFileKey !== undefined && { pdfFileKey: data.pdfFileKey }),
+      ...(data.pdfFileName !== undefined && { pdfFileName: data.pdfFileName }),
+      ...(data.totalPages !== undefined && { totalPages: data.totalPages }),
+      ...(data.totalChapters !== undefined && { totalChapters: data.totalChapters }),
+    };
+
+    let bookDoc;
+    try {
+      bookDoc = await databases.updateDocument(
+        APPWRITE_CONFIG.databaseId,
+        APPWRITE_CONFIG.collections.books,
+        id,
+        updatePayload
+      );
+    } catch (updateErr: any) {
+      if (updateErr?.message?.includes('coverImagePosition')) {
+        delete updatePayload.coverImagePosition;
+        bookDoc = await databases.updateDocument(
+          APPWRITE_CONFIG.databaseId,
+          APPWRITE_CONFIG.collections.books,
+          id,
+          updatePayload
+        );
+      } else {
+        throw updateErr;
       }
-    );
+    }
 
     const fullBook = await this.getBookById(bookDoc.$id);
     if (!fullBook) throw new Error('Failed to retrieve updated book');

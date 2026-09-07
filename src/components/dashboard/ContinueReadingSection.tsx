@@ -56,6 +56,7 @@ export const ContinueReadingSection: React.FC<ContinueReadingSectionProps> = ({
                   src={book.coverFileUrl || 'https://images.unsplash.com/photo-1543002588-bfa74002ed7e?w=160&auto=format&fit=crop&q=80'}
                   alt=""
                   className="w-12 h-16 object-cover rounded-xl shadow-md shrink-0 group-hover:scale-105 transition-transform"
+                  style={{ objectPosition: book.coverImagePosition || 'center' }}
                 />
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-1.5 mb-1">

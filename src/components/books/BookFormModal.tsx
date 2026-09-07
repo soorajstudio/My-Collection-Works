@@ -5,7 +5,21 @@ import { Button } from '../common/Button';
 import { BOOK_CATEGORIES, BOOK_LANGUAGES } from '../../utils/constants';
 import { BookCategory, BookWithReadingState } from '../../types/book.types';
 import { storageService, searchAllLiterature, ExternalBookCandidate } from '../../services';
-import { UploadCloud, FileText, CheckCircle2, AlertCircle, Sparkles, Search, Loader2 } from 'lucide-react';
+import {
+  UploadCloud,
+  FileText,
+  CheckCircle2,
+  AlertCircle,
+  Sparkles,
+  Search,
+  Loader2,
+  Focus,
+  Image as ImageIcon,
+  Link as LinkIcon,
+  X,
+  ArrowUp,
+  ArrowDown,
+} from 'lucide-react';
 import { Badge } from '../common/Badge';
 
 interface BookFormModalProps {
@@ -32,6 +46,8 @@ export const BookFormModal: React.FC<BookFormModalProps> = ({
   const [currentChapter, setCurrentChapter] = useState<string>('');
   const [coverFileUrl, setCoverFileUrl] = useState('');
   const [coverFileKey, setCoverFileKey] = useState('');
+  const [coverImagePosition, setCoverImagePosition] = useState<string>('center');
+  const [isCustomUrlMode, setIsCustomUrlMode] = useState(false);
   const [pdfFileName, setPdfFileName] = useState('');
   const [pdfFileKey, setPdfFileKey] = useState('');
   
@@ -59,6 +75,8 @@ export const BookFormModal: React.FC<BookFormModalProps> = ({
       setDescription(initialData.description || '');
       setCoverFileUrl(initialData.coverFileUrl || '');
       setCoverFileKey(initialData.coverFileKey || '');
+      setCoverImagePosition(initialData.coverImagePosition || 'center');
+      setIsCustomUrlMode(false);
       setPdfFileName(initialData.pdfFileName || '');
       setPdfFileKey(initialData.pdfFileKey || '');
       setTotalPages(initialData.totalPages != null ? String(initialData.totalPages) : '');
@@ -77,6 +95,8 @@ export const BookFormModal: React.FC<BookFormModalProps> = ({
       setCurrentChapter('');
       setCoverFileUrl('');
       setCoverFileKey('');
+      setCoverImagePosition('center');
+      setIsCustomUrlMode(false);
       setPdfFileName('');
       setPdfFileKey('');
     }
@@ -183,6 +203,7 @@ export const BookFormModal: React.FC<BookFormModalProps> = ({
         description: description.trim(),
         coverFileUrl: coverFileUrl || undefined,
         coverFileKey: coverFileKey || undefined,
+        coverImagePosition: coverImagePosition || 'center',
         pdfFileName: pdfFileName || undefined,
         pdfFileKey: pdfFileKey || undefined,
         totalPages: !isChapterBased && totalPages ? parseInt(totalPages, 10) : null,
@@ -438,52 +459,187 @@ export const BookFormModal: React.FC<BookFormModalProps> = ({
           />
         </div>
 
-        {/* File Uploads (Cover & PDF) to Cloudflare R2 */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
-          {/* Cover Image Upload */}
-          <div className="space-y-1.5">
-            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
-              Cover Image (R2)
-            </label>
-            <div className="flex items-center gap-3">
-              {coverFileUrl ? (
-                <img
-                  src={coverFileUrl}
-                  alt="Cover preview"
-                  className="w-12 h-14 object-cover rounded-lg border border-slate-300 dark:border-slate-700"
-                />
-              ) : (
-                <div className="w-12 h-14 rounded-lg bg-slate-100 dark:bg-slate-800/80 border border-dashed border-slate-300 dark:border-slate-700 flex items-center justify-center text-slate-400">
-                  <UploadCloud className="w-5 h-5" />
-                </div>
-              )}
-              <div className="flex-1">
-                <input
-                  type="file"
-                  id="book-cover-input"
-                  accept="image/jpeg,image/png,image/webp"
-                  onChange={handleCoverUpload}
-                  className="hidden"
-                />
-                <label
-                  htmlFor="book-cover-input"
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700 cursor-pointer transition-colors"
+        {/* Cover Image & File Attachments */}
+        <div className="space-y-4 pt-1">
+          {/* Cover Image Configuration Card */}
+          <div className="p-3.5 sm:p-4 rounded-xl bg-slate-50/80 dark:bg-white/[0.02] border border-slate-200/80 dark:border-white/10 space-y-3">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+                <ImageIcon className="w-3.5 h-3.5 text-indigo-500" />
+                <span>Book Cover Image</span>
+              </label>
+              {coverFileUrl && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCoverFileUrl('');
+                    setCoverFileKey('');
+                  }}
+                  className="text-[11px] font-medium text-rose-500 hover:text-rose-600 transition-colors flex items-center gap-1"
                 >
-                  <UploadCloud className="w-3.5 h-3.5" />
-                  <span>{isUploadingCover ? `Uploading (${uploadProgress}%)` : coverFileUrl ? 'Change Cover' : 'Upload Cover'}</span>
-                </label>
-                <p className="text-[10px] text-slate-500 mt-1">JPEG, PNG, WebP up to 5MB</p>
+                  <X className="w-3 h-3" />
+                  <span>Remove Cover</span>
+                </button>
+              )}
+            </div>
+
+            <div className="flex flex-col sm:flex-row gap-4">
+              {/* Cover Live Preview Card */}
+              <div className="relative w-24 h-32 shrink-0 rounded-xl overflow-hidden bg-slate-900 border border-slate-200 dark:border-slate-700 shadow-md group">
+                {coverFileUrl ? (
+                  <>
+                    <img
+                      src={coverFileUrl}
+                      alt="Cover preview"
+                      className="w-full h-full object-cover transition-all duration-300"
+                      style={{ objectPosition: coverImagePosition }}
+                    />
+                    <div className="absolute inset-x-0 bottom-0 py-0.5 px-1 bg-slate-950/80 backdrop-blur-sm text-[9px] text-center text-slate-300 font-mono truncate">
+                      {coverImagePosition}
+                    </div>
+                  </>
+                ) : (
+                  <div className="w-full h-full flex flex-col items-center justify-center text-slate-400 gap-1.5 p-2 text-center">
+                    <UploadCloud className="w-6 h-6 text-slate-400 dark:text-slate-500" />
+                    <span className="text-[10px] text-slate-400">No cover</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Cover Source Buttons & Position Settings */}
+              <div className="flex-1 space-y-3 min-w-0">
+                {/* Upload & Direct URL Controls */}
+                <div className="flex flex-wrap items-center gap-2">
+                  <input
+                    type="file"
+                    id="book-cover-input"
+                    accept="image/jpeg,image/png,image/webp"
+                    onChange={handleCoverUpload}
+                    className="hidden"
+                  />
+                  <label
+                    htmlFor="book-cover-input"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700 cursor-pointer transition-colors"
+                  >
+                    <UploadCloud className="w-3.5 h-3.5" />
+                    <span>{isUploadingCover ? `Uploading (${uploadProgress}%)` : coverFileUrl ? 'Replace File' : 'Upload Image'}</span>
+                  </label>
+
+                  <button
+                    type="button"
+                    onClick={() => setIsCustomUrlMode(!isCustomUrlMode)}
+                    className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium bg-transparent hover:bg-slate-100 dark:hover:bg-slate-800/80 text-slate-600 dark:text-slate-400 border border-dashed border-slate-300 dark:border-slate-700 transition-colors"
+                  >
+                    <LinkIcon className="w-3 h-3" />
+                    <span>{isCustomUrlMode ? 'Hide URL' : 'Image URL'}</span>
+                  </button>
+
+                  <span className="text-[10px] text-slate-500">JPG, PNG, WebP</span>
+                </div>
+
+                {isCustomUrlMode && (
+                  <div className="pt-0.5 animate-in fade-in duration-200">
+                    <input
+                      type="url"
+                      placeholder="Paste direct image URL (https://...)"
+                      value={coverFileUrl}
+                      onChange={(e) => {
+                        setCoverFileUrl(e.target.value);
+                        setCoverFileKey('');
+                      }}
+                      className="w-full px-3 py-1.5 text-xs rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                    />
+                  </div>
+                )}
+
+                {/* Cover Image Position Options */}
+                {coverFileUrl && (
+                  <div className="space-y-2 pt-2 border-t border-slate-200/80 dark:border-white/10">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                        <Focus className="w-3.5 h-3.5 text-indigo-500" />
+                        <span>Cover Image Position (Focal Point)</span>
+                      </span>
+                      <span className="text-[11px] font-semibold text-indigo-600 dark:text-indigo-400 capitalize">
+                        {coverImagePosition}
+                      </span>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-3">
+                      {/* Presets: Top, Center, Bottom */}
+                      <div className="flex items-center gap-1">
+                        {[
+                          { id: 'top', label: 'Top', icon: <ArrowUp className="w-3 h-3" /> },
+                          { id: 'center', label: 'Center', icon: <Focus className="w-3 h-3" /> },
+                          { id: 'bottom', label: 'Bottom', icon: <ArrowDown className="w-3 h-3" /> },
+                        ].map((preset) => (
+                          <button
+                            key={preset.id}
+                            type="button"
+                            onClick={() => setCoverImagePosition(preset.id)}
+                            className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium transition-all ${
+                              coverImagePosition === preset.id
+                                ? 'bg-indigo-600 text-white shadow-sm shadow-indigo-500/20'
+                                : 'bg-slate-200/80 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-700'
+                            }`}
+                          >
+                            {preset.icon}
+                            <span>{preset.label}</span>
+                          </button>
+                        ))}
+                      </div>
+
+                      <div className="h-4 w-px bg-slate-300 dark:bg-white/10 hidden sm:block" />
+
+                      {/* 9-Point Alignment Matrix */}
+                      <div className="flex items-center gap-2">
+                        <div className="grid grid-cols-3 gap-1 p-1 bg-slate-200/80 dark:bg-slate-900 rounded-lg border border-slate-300 dark:border-slate-800">
+                          {[
+                            { id: 'left top', title: 'Top Left' },
+                            { id: 'top', title: 'Top Center' },
+                            { id: 'right top', title: 'Top Right' },
+                            { id: 'left', title: 'Center Left' },
+                            { id: 'center', title: 'Center' },
+                            { id: 'right', title: 'Center Right' },
+                            { id: 'left bottom', title: 'Bottom Left' },
+                            { id: 'bottom', title: 'Bottom Center' },
+                            { id: 'right bottom', title: 'Bottom Right' },
+                          ].map((pos) => (
+                            <button
+                              key={pos.id}
+                              type="button"
+                              title={pos.title}
+                              onClick={() => setCoverImagePosition(pos.id)}
+                              className={`w-4 h-4 rounded-sm transition-all flex items-center justify-center ${
+                                coverImagePosition === pos.id
+                                  ? 'bg-indigo-600 ring-1 ring-indigo-400'
+                                  : 'bg-slate-300 dark:bg-slate-700 hover:bg-indigo-400/50'
+                              }`}
+                            >
+                              <span className={`w-1 h-1 rounded-full ${coverImagePosition === pos.id ? 'bg-white' : 'bg-transparent'}`} />
+                            </button>
+                          ))}
+                        </div>
+                        <span className="text-[10px] text-slate-500">9-Point Grid</span>
+                      </div>
+                    </div>
+
+                    <p className="text-[10px] text-slate-500 dark:text-slate-400">
+                      Select <strong>Top</strong> to prevent title or faces from being cropped, or pick a custom alignment.
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
           </div>
 
           {/* PDF Attachment Upload */}
-          <div className="space-y-1.5">
+          <div className="p-3.5 sm:p-4 rounded-xl bg-slate-50/80 dark:bg-white/[0.02] border border-slate-200/80 dark:border-white/10 space-y-2">
             <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
               Attach PDF (R2)
             </label>
             <div className="flex items-center gap-3">
-              <div className="w-12 h-14 rounded-lg bg-slate-100 dark:bg-slate-800/80 border border-dashed border-slate-300 dark:border-slate-700 flex items-center justify-center text-slate-400">
+              <div className="w-10 h-10 rounded-lg bg-slate-100 dark:bg-slate-800/80 border border-dashed border-slate-300 dark:border-slate-700 flex items-center justify-center text-slate-400">
                 <FileText className="w-5 h-5" />
               </div>
               <div className="flex-1">

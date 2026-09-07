@@ -56,6 +56,7 @@ export const BookCard: React.FC<BookCardProps> = ({
               src={book.coverFileUrl || 'https://images.unsplash.com/photo-1543002588-bfa74002ed7e?w=200&auto=format&fit=crop&q=80'}
               alt={book.title}
               className="w-12 h-16 sm:w-14 sm:h-20 object-cover rounded-xl shadow-md group-hover:scale-105 transition-transform"
+              style={{ objectPosition: book.coverImagePosition || 'center' }}
             />
           </Link>
           <div className="min-w-0">
@@ -113,6 +114,7 @@ export const BookCard: React.FC<BookCardProps> = ({
               src={book.coverFileUrl || 'https://images.unsplash.com/photo-1543002588-bfa74002ed7e?w=600&auto=format&fit=crop&q=80'}
               alt={book.title}
               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+              style={{ objectPosition: book.coverImagePosition || 'center' }}
             />
           </Link>
 
