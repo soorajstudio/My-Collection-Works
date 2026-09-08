@@ -14,6 +14,7 @@ import {
   ExternalLink,
   RefreshCw,
   Focus,
+  Crop,
   ArrowUp,
   ArrowDown,
 } from 'lucide-react';
@@ -24,6 +25,7 @@ import { Button } from '../../components/common/Button';
 import { Skeleton } from '../../components/common/Skeleton';
 import { ReadingProgressModal } from '../../components/books/ReadingProgressModal';
 import { BookFormModal } from '../../components/books/BookFormModal';
+import { CoverCropModal } from '../../components/books/CoverCropModal';
 import { formatDate, formatRelativeTime } from '../../utils/formatters';
 import { useToast } from '../../context/ToastContext';
 
@@ -34,7 +36,7 @@ export const BookDetailPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isProgressModalOpen, setIsProgressModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [isPositionPickerOpen, setIsPositionPickerOpen] = useState(false);
+  const [isCropModalOpen, setIsCropModalOpen] = useState(false);
   const [isSyncingChapters, setIsSyncingChapters] = useState(false);
   const { success, error } = useToast();
 
@@ -43,10 +45,6 @@ export const BookDetailPage: React.FC = () => {
     setIsLoading(true);
     try {
       const data = await booksService.getBookById(id);
-      if (!data) {
-        navigate('/books');
-        return;
-      }
       setBook(data);
     } catch (err: any) {
       error('Failed to load book', err.message);
@@ -76,27 +74,30 @@ export const BookDetailPage: React.FC = () => {
     }
   };
 
-
-  const handleUpdateProgress = async (updates: any) => {
+  const handleUpdateProgress = async (updates: {
+    currentChapter?: number | null;
+    currentPage?: number | null;
+    status?: any;
+  }) => {
     if (!book) return;
     try {
       const updated = await booksService.updateReadingProgress(book.id, updates);
       setBook(updated);
-      success('Progress saved', updated.title);
+      success('Progress saved', `${book.title} updated`);
     } catch (err: any) {
-      error('Error saving progress', err.message);
+      error('Failed to update progress', err.message);
     }
   };
 
   const handleToggleWishlist = async () => {
     if (!book) return;
+    const newWishlist = !book.readingState?.wishlist;
     try {
-      const updated = await booksService.toggleWishlist(book.id);
+      const updated = await booksService.updateReadingProgress(book.id, {
+        wishlist: newWishlist,
+      });
       setBook(updated);
-      success(
-        updated.readingState?.wishlist ? 'Saved to Wishlist' : 'Removed from Wishlist',
-        updated.title
-      );
+      success(newWishlist ? 'Saved to reading wishlist' : 'Removed from wishlist');
     } catch (err: any) {
       error('Error updating wishlist', err.message);
     }
@@ -117,22 +118,31 @@ export const BookDetailPage: React.FC = () => {
     if (!book) return;
     try {
       const updated = await booksService.updateBook(book.id, data);
-      setBook(updated);
+      setBook({
+        ...updated,
+        coverFileUrl: data.coverFileUrl !== undefined ? data.coverFileUrl : updated.coverFileUrl,
+        coverImagePosition: data.coverImagePosition || updated.coverImagePosition || 'center',
+      });
       success('Book updated', updated.title);
     } catch (err: any) {
       error('Failed to update book', err.message);
     }
   };
 
-  const handleUpdateCoverPosition = async (newPos: string) => {
+  const handleCropSave = async (newPos: string, croppedUrl?: string) => {
     if (!book) return;
+    const updates: any = { coverImagePosition: newPos };
+    if (croppedUrl) {
+      updates.coverFileUrl = croppedUrl;
+    }
+    // Optimistically update
+    setBook({ ...book, ...updates });
     try {
-      const updated = await booksService.updateBook(book.id, { coverImagePosition: newPos });
-      setBook(updated);
-      success('Cover position updated', `Aligned to ${newPos}`);
-      setIsPositionPickerOpen(false);
+      const updated = await booksService.updateBook(book.id, updates);
+      setBook({ ...updated, ...updates });
+      success('Cover updated', croppedUrl ? 'Cover image cropped & framed' : `Framing set to ${newPos}`);
     } catch (err: any) {
-      error('Failed to update cover position', err.message);
+      error('Failed to update cover', err.message);
     }
   };
 
@@ -212,16 +222,17 @@ export const BookDetailPage: React.FC = () => {
               style={{ objectPosition: book.coverImagePosition || 'center' }}
             />
 
-            {/* Quick Position Control Button */}
+            {/* Quick Crop & Framing Control Button */}
             <div className="absolute top-3 left-3 z-10">
               <button
                 type="button"
-                onClick={() => setIsPositionPickerOpen(!isPositionPickerOpen)}
-                title="Adjust Cover Alignment"
-                className="py-1.5 px-2.5 rounded-full glass-panel border border-white/25 hover:border-indigo-400 text-slate-200 hover:text-white transition-all shadow-lg flex items-center gap-1.5 text-xs bg-slate-950/70 backdrop-blur-md"
+                onClick={() => setIsCropModalOpen(true)}
+                title="Open interactive 3:4 crop & framing tool"
+                className="py-1.5 px-3 rounded-full glass-panel border border-white/25 hover:border-indigo-400 text-slate-200 hover:text-white transition-all shadow-lg flex items-center gap-1.5 text-xs bg-slate-950/70 backdrop-blur-md hover:bg-slate-900 cursor-pointer"
               >
-                <Focus className="w-3.5 h-3.5 text-indigo-400" />
-                <span className="capitalize font-medium text-[11px]">{book.coverImagePosition || 'center'}</span>
+                <Crop className="w-3.5 h-3.5 text-indigo-400" />
+                <span className="font-medium">Crop & Frame</span>
+                <span className="text-[10px] text-indigo-300 font-mono">({book.coverImagePosition || 'center'})</span>
               </button>
             </div>
 
@@ -229,84 +240,22 @@ export const BookDetailPage: React.FC = () => {
             <div className="absolute top-3 right-3 z-10">
               <button
                 onClick={handleToggleWishlist}
-                className="p-2.5 rounded-full glass-panel border border-white/15 hover:border-rose-500/40 text-slate-300 hover:text-rose-400 transition-all shadow-lg bg-slate-950/50 backdrop-blur-md"
+                className="p-2.5 rounded-full glass-panel border border-white/15 hover:border-rose-500/40 text-slate-300 hover:text-rose-400 transition-all shadow-lg bg-slate-950/50 backdrop-blur-md cursor-pointer"
               >
                 <Heart className={`w-4 h-4 ${wishlist ? 'fill-rose-400 text-rose-400' : ''}`} />
               </button>
             </div>
 
-            {/* Position Picker Popover Panel */}
-            {isPositionPickerOpen && (
-              <div className="absolute inset-x-3 top-14 p-3.5 rounded-xl bg-slate-950/95 backdrop-blur-xl border border-white/20 shadow-2xl space-y-3 z-20 animate-in fade-in zoom-in-95 duration-150 text-slate-200">
-                <div className="flex items-center justify-between text-xs font-semibold pb-1.5 border-b border-white/10">
-                  <span className="flex items-center gap-1 text-indigo-400">
-                    <Focus className="w-3.5 h-3.5" />
-                    <span>Align Cover Image</span>
-                  </span>
-                  <button
-                    onClick={() => setIsPositionPickerOpen(false)}
-                    className="text-slate-400 hover:text-white text-xs"
-                  >
-                    ✕
-                  </button>
-                </div>
-
-                {/* Presets */}
-                <div className="grid grid-cols-3 gap-1.5">
-                  {[
-                    { id: 'top', label: 'Top', icon: <ArrowUp className="w-3 h-3" /> },
-                    { id: 'center', label: 'Center', icon: <Focus className="w-3 h-3" /> },
-                    { id: 'bottom', label: 'Bottom', icon: <ArrowDown className="w-3 h-3" /> },
-                  ].map((preset) => (
-                    <button
-                      key={preset.id}
-                      type="button"
-                      onClick={() => handleUpdateCoverPosition(preset.id)}
-                      className={`flex items-center justify-center gap-1 py-1 px-2 rounded-lg text-xs font-medium transition-colors ${
-                        (book.coverImagePosition || 'center') === preset.id
-                          ? 'bg-indigo-600 text-white shadow-sm'
-                          : 'bg-white/10 hover:bg-white/20 text-slate-200'
-                      }`}
-                    >
-                      {preset.icon}
-                      <span>{preset.label}</span>
-                    </button>
-                  ))}
-                </div>
-
-                {/* 9-Point Alignment Grid */}
-                <div className="pt-1 flex items-center justify-between">
-                  <span className="text-[10px] text-slate-400">9-Point Grid:</span>
-                  <div className="grid grid-cols-3 gap-1 p-1 bg-slate-900 rounded-md border border-white/10">
-                    {[
-                      { id: 'left top', title: 'Top Left' },
-                      { id: 'top', title: 'Top Center' },
-                      { id: 'right top', title: 'Top Right' },
-                      { id: 'left', title: 'Center Left' },
-                      { id: 'center', title: 'Center' },
-                      { id: 'right', title: 'Center Right' },
-                      { id: 'left bottom', title: 'Bottom Left' },
-                      { id: 'bottom', title: 'Bottom Center' },
-                      { id: 'right bottom', title: 'Bottom Right' },
-                    ].map((pos) => (
-                      <button
-                        key={pos.id}
-                        type="button"
-                        title={pos.title}
-                        onClick={() => handleUpdateCoverPosition(pos.id)}
-                        className={`w-4 h-4 rounded-xs transition-all flex items-center justify-center ${
-                          (book.coverImagePosition || 'center') === pos.id
-                            ? 'bg-indigo-600 ring-1 ring-indigo-400'
-                            : 'bg-slate-700 hover:bg-indigo-400/50'
-                        }`}
-                      >
-                        <span className={`w-1 h-1 rounded-full ${(book.coverImagePosition || 'center') === pos.id ? 'bg-white' : 'bg-transparent'}`} />
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            )}
+            {/* Hover Indicator Overlay */}
+            <div
+              onClick={() => setIsCropModalOpen(true)}
+              className="absolute inset-0 bg-black/25 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center cursor-pointer pointer-events-none sm:pointer-events-auto"
+            >
+              <span className="py-1.5 px-3 rounded-full bg-slate-950/80 backdrop-blur-md text-white text-xs font-semibold flex items-center gap-1.5 shadow-xl border border-white/20">
+                <Crop className="w-3.5 h-3.5 text-indigo-400" />
+                <span>Adjust Cover Frame</span>
+              </span>
+            </div>
           </div>
 
           {/* PDF Action Box (Cloudflare R2) */}
@@ -475,6 +424,18 @@ export const BookDetailPage: React.FC = () => {
         initialData={book}
         onSubmit={handleSaveEdit}
       />
+
+      {/* Interactive 3:4 Rectangular Cropper & Framing Modal */}
+      {isCropModalOpen && book.coverFileUrl && (
+        <CoverCropModal
+          isOpen={isCropModalOpen}
+          onClose={() => setIsCropModalOpen(false)}
+          imageUrl={book.coverFileUrl}
+          initialPosition={book.coverImagePosition}
+          bookTitle={book.title}
+          onSave={handleCropSave}
+        />
+      )}
     </div>
   );
 };

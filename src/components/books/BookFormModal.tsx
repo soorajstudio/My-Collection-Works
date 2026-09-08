@@ -14,6 +14,7 @@ import {
   Search,
   Loader2,
   Focus,
+  Crop,
   Image as ImageIcon,
   Link as LinkIcon,
   X,
@@ -21,6 +22,7 @@ import {
   ArrowDown,
 } from 'lucide-react';
 import { Badge } from '../common/Badge';
+import { CoverCropModal } from './CoverCropModal';
 
 interface BookFormModalProps {
   isOpen: boolean;
@@ -48,6 +50,7 @@ export const BookFormModal: React.FC<BookFormModalProps> = ({
   const [coverFileKey, setCoverFileKey] = useState('');
   const [coverImagePosition, setCoverImagePosition] = useState<string>('center');
   const [isCustomUrlMode, setIsCustomUrlMode] = useState(false);
+  const [isCropperOpen, setIsCropperOpen] = useState(false);
   const [pdfFileName, setPdfFileName] = useState('');
   const [pdfFileKey, setPdfFileKey] = useState('');
   
@@ -491,18 +494,28 @@ export const BookFormModal: React.FC<BookFormModalProps> = ({
             </div>
 
             <div className="flex flex-col sm:flex-row gap-4">
-              {/* Cover Live Preview Card */}
-              <div className="relative w-24 h-32 shrink-0 rounded-xl overflow-hidden bg-slate-900 border border-slate-200 dark:border-slate-700 shadow-md group">
+              {/* Cover Live Preview Card - Click to Crop */}
+              <div
+                onClick={() => coverFileUrl && setIsCropperOpen(true)}
+                title={coverFileUrl ? 'Click to open interactive 3:4 crop & framing tool' : undefined}
+                className={`relative w-24 h-32 shrink-0 rounded-xl overflow-hidden bg-slate-900 border border-slate-200 dark:border-slate-700 shadow-md group ${
+                  coverFileUrl ? 'cursor-pointer ring-offset-2 hover:ring-2 hover:ring-indigo-500' : ''
+                }`}
+              >
                 {coverFileUrl ? (
                   <>
                     <img
                       src={coverFileUrl}
                       alt="Cover preview"
-                      className="w-full h-full object-cover transition-all duration-300"
+                      className="w-full h-full object-cover transition-all duration-300 group-hover:scale-105"
                       style={{ objectPosition: coverImagePosition }}
                     />
                     <div className="absolute inset-x-0 bottom-0 py-0.5 px-1 bg-slate-950/80 backdrop-blur-sm text-[9px] text-center text-slate-300 font-mono truncate">
                       {coverImagePosition}
+                    </div>
+                    <div className="absolute inset-0 bg-slate-950/40 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white text-[10px] font-medium gap-1">
+                      <Crop className="w-4 h-4 text-indigo-400" />
+                      <span>Adjust Crop</span>
                     </div>
                   </>
                 ) : (
@@ -540,6 +553,17 @@ export const BookFormModal: React.FC<BookFormModalProps> = ({
                     <LinkIcon className="w-3 h-3" />
                     <span>{isCustomUrlMode ? 'Hide URL' : 'Image URL'}</span>
                   </button>
+
+                  {coverFileUrl && (
+                    <button
+                      type="button"
+                      onClick={() => setIsCropperOpen(true)}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/60 dark:hover:bg-indigo-900/80 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800 transition-colors shadow-sm"
+                    >
+                      <Crop className="w-3.5 h-3.5" />
+                      <span>Adjust Crop & Framing</span>
+                    </button>
+                  )}
 
                   <span className="text-[10px] text-slate-500">JPG, PNG, WebP</span>
                 </div>
@@ -582,9 +606,14 @@ export const BookFormModal: React.FC<BookFormModalProps> = ({
                         <Focus className="w-3.5 h-3.5 text-indigo-500" />
                         <span>Cover Image Position (Focal Point)</span>
                       </span>
-                      <span className="text-[11px] font-semibold text-indigo-600 dark:text-indigo-400 capitalize">
-                        {coverImagePosition}
-                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setIsCropperOpen(true)}
+                        className="text-[11px] font-semibold text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1"
+                      >
+                        <Crop className="w-3 h-3" />
+                        <span>Move Crop Rectangle</span>
+                      </button>
                     </div>
 
                     <div className="flex flex-wrap items-center gap-3">
@@ -647,7 +676,7 @@ export const BookFormModal: React.FC<BookFormModalProps> = ({
                     </div>
 
                     <p className="text-[10px] text-slate-500 dark:text-slate-400">
-                      Select <strong>Top</strong> to prevent title or faces from being cropped, or pick a custom alignment.
+                      Click <strong>Adjust Crop & Framing</strong> to drag a 3:4 rectangular box over your image, or pick a preset alignment.
                     </p>
                   </div>
                 )}
@@ -715,6 +744,24 @@ export const BookFormModal: React.FC<BookFormModalProps> = ({
           </Button>
         </div>
       </form>
+
+      {/* Interactive 3:4 Rectangular Cropper & Framing Modal */}
+      {isCropperOpen && coverFileUrl && (
+        <CoverCropModal
+          isOpen={isCropperOpen}
+          onClose={() => setIsCropperOpen(false)}
+          imageUrl={coverFileUrl}
+          initialPosition={coverImagePosition}
+          bookTitle={title || 'Book Title'}
+          onSave={(newPos, croppedUrl) => {
+            setCoverImagePosition(newPos);
+            if (croppedUrl) {
+              setCoverFileUrl(croppedUrl);
+              setCoverFileKey('');
+            }
+          }}
+        />
+      )}
     </Modal>
   );
 };
