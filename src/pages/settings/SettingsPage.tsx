@@ -47,7 +47,7 @@ export const SettingsPage: React.FC = () => {
             </div>
             <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200/80 dark:border-white/5 space-y-1">
               <span className="text-slate-500 uppercase font-semibold text-[10px]">Endpoint</span>
-              <p className="font-mono text-slate-800 dark:text-slate-200">{import.meta.env.VITE_APPWRITE_ENDPOINT || 'https://cloud.appwrite.io/v1'}</p>
+              <p className="font-mono text-slate-800 dark:text-slate-200">{import.meta.env.VITE_APPWRITE_ENDPOINT || 'https://fra.cloud.appwrite.io/v1'}</p>
             </div>
           </div>
 

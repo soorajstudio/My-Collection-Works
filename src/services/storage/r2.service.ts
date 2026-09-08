@@ -81,7 +81,7 @@ export const r2StorageService = {
 
     // 1. If connected to live Appwrite without R2 signer, upload directly with real XMLHttpRequest progress:
     if (!APPWRITE_CONFIG.isMock && !APPWRITE_CONFIG.r2SignerEndpoint) {
-      const endpoint = import.meta.env.VITE_APPWRITE_ENDPOINT || 'https://cloud.appwrite.io/v1';
+      const endpoint = import.meta.env.VITE_APPWRITE_ENDPOINT || 'https://fra.cloud.appwrite.io/v1';
       const projectId = import.meta.env.VITE_APPWRITE_PROJECT_ID || '6a9e9053003be1fde2dc';
       const fileId = ID.unique();
 
