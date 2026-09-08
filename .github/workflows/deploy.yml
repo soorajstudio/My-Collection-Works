@@ -33,6 +33,16 @@ jobs:
 
       - name: Build production bundle
         run: npm run build
+        env:
+          VITE_USE_MOCK_FALLBACK: "false"
+          VITE_APPWRITE_ENDPOINT: "https://cloud.appwrite.io/v1"
+          VITE_APPWRITE_PROJECT_ID: "6a9e9053003be1fde2dc"
+          VITE_APPWRITE_DATABASE_ID: "my_library_db"
+          VITE_APPWRITE_COLLECTION_PROFILES: "user_profiles"
+          VITE_APPWRITE_COLLECTION_BOOKS: "books"
+          VITE_APPWRITE_COLLECTION_READING_STATES: "reading_states"
+          VITE_APPWRITE_COLLECTION_CERTIFICATES: "certificates"
+          VITE_APPWRITE_COLLECTION_PROJECTS: "projects"
 
       - name: Upload GitHub Pages artifact
         uses: actions/upload-pages-artifact@v3

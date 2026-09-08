@@ -22,7 +22,7 @@ interface CoverCropModalProps {
   imageUrl: string;
   initialPosition?: string;
   bookTitle?: string;
-  onSave: (position: string, croppedDataUrl?: string) => void;
+  onSave: (position: string, croppedDataUrl?: string) => void | Promise<void>;
 }
 
 export const CoverCropModal: React.FC<CoverCropModalProps> = ({
@@ -35,6 +35,9 @@ export const CoverCropModal: React.FC<CoverCropModalProps> = ({
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const imageRef = useRef<HTMLImageElement>(null);
+
+  const [isApplying, setIsApplying] = useState(false);
+  const [imgCrossOrigin, setImgCrossOrigin] = useState<'anonymous' | undefined>('anonymous');
 
   // Natural image dimensions
   const [naturalSize, setNaturalSize] = useState<{ width: number; height: number }>({ width: 0, height: 0 });
@@ -263,17 +266,33 @@ export const CoverCropModal: React.FC<CoverCropModalProps> = ({
     }
   };
 
-  const handleApplyPositionOnly = () => {
-    const formatted = `${focalPercent.x}% ${focalPercent.y}%`;
-    onSave(formatted);
-    onClose();
+  const handleApplyPositionOnly = async () => {
+    setIsApplying(true);
+    try {
+      const formatted = `${focalPercent.x}% ${focalPercent.y}%`;
+      await onSave(formatted);
+      onClose();
+    } finally {
+      setIsApplying(false);
+    }
   };
 
   const handleApplyHardCrop = async () => {
-    const croppedUrl = await generateCroppedCanvas();
-    const formatted = `${focalPercent.x}% ${focalPercent.y}%`;
-    onSave(formatted, croppedUrl);
-    onClose();
+    setIsApplying(true);
+    try {
+      const croppedUrl = await generateCroppedCanvas();
+      const formatted = `${focalPercent.x}% ${focalPercent.y}%`;
+      await onSave(formatted, croppedUrl);
+      onClose();
+    } finally {
+      setIsApplying(false);
+    }
+  };
+
+  const handleImageError = () => {
+    if (imgCrossOrigin === 'anonymous') {
+      setImgCrossOrigin(undefined);
+    }
   };
 
   const currentCssPosition = `${focalPercent.x}% ${focalPercent.y}%`;
@@ -314,7 +333,8 @@ export const CoverCropModal: React.FC<CoverCropModalProps> = ({
                 src={imageUrl}
                 alt="Source preview"
                 onLoad={handleImageLoad}
-                crossOrigin="anonymous"
+                onError={handleImageError}
+                crossOrigin={imgCrossOrigin}
                 className="max-w-full max-h-full object-contain pointer-events-none"
               />
 
@@ -506,6 +526,7 @@ export const CoverCropModal: React.FC<CoverCropModalProps> = ({
               variant="secondary"
               size="sm"
               onClick={handleApplyPositionOnly}
+              disabled={isApplying}
               leftIcon={<Focus className="w-3.5 h-3.5 text-indigo-500 dark:text-indigo-400" />}
               className="text-xs"
             >
@@ -517,6 +538,8 @@ export const CoverCropModal: React.FC<CoverCropModalProps> = ({
               variant="primary"
               size="sm"
               onClick={handleApplyHardCrop}
+              isLoading={isApplying}
+              disabled={isApplying}
               leftIcon={<Crop className="w-3.5 h-3.5" />}
               className="text-xs"
             >

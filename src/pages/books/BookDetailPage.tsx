@@ -18,7 +18,7 @@ import {
   ArrowUp,
   ArrowDown,
 } from 'lucide-react';
-import { booksService, syncMangaManhwaChapters } from '../../services';
+import { booksService, storageService, syncMangaManhwaChapters } from '../../services';
 import { BookWithReadingState } from '../../types/book.types';
 import { Badge } from '../../components/common/Badge';
 import { Button } from '../../components/common/Button';
@@ -131,16 +131,32 @@ export const BookDetailPage: React.FC = () => {
 
   const handleCropSave = async (newPos: string, croppedUrl?: string) => {
     if (!book) return;
-    const updates: any = { coverImagePosition: newPos };
-    if (croppedUrl) {
-      updates.coverFileUrl = croppedUrl;
-    }
-    // Optimistically update
-    setBook({ ...book, ...updates });
     try {
+      let finalCoverUrl = book.coverFileUrl;
+      let finalCoverKey = book.coverFileKey;
+
+      if (croppedUrl && croppedUrl.startsWith('data:')) {
+        const safeTitle = (book.title || 'book').replace(/[^a-zA-Z0-9]/g, '_');
+        const uploadRes = await storageService.uploadDataUrl(
+          croppedUrl,
+          `${safeTitle}_crop_${Date.now()}.jpg`,
+          { category: 'books/covers' }
+        );
+        finalCoverUrl = uploadRes.fileUrl;
+        finalCoverKey = uploadRes.fileKey;
+      }
+
+      const updates: any = {
+        coverImagePosition: newPos,
+        ...(finalCoverUrl ? { coverFileUrl: finalCoverUrl } : {}),
+        ...(finalCoverKey ? { coverFileKey: finalCoverKey } : {}),
+      };
+
+      // Optimistically update
+      setBook({ ...book, ...updates });
       const updated = await booksService.updateBook(book.id, updates);
       setBook({ ...updated, ...updates });
-      success('Cover updated', croppedUrl ? 'Cover image cropped & framed' : `Framing set to ${newPos}`);
+      success('Cover updated', croppedUrl ? 'Cover cropped & uploaded to cloud storage' : `Framing saved (${newPos})`);
     } catch (err: any) {
       error('Failed to update cover', err.message);
     }

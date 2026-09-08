@@ -753,11 +753,28 @@ export const BookFormModal: React.FC<BookFormModalProps> = ({
           imageUrl={coverFileUrl}
           initialPosition={coverImagePosition}
           bookTitle={title || 'Book Title'}
-          onSave={(newPos, croppedUrl) => {
+          onSave={async (newPos, croppedUrl) => {
             setCoverImagePosition(newPos);
             if (croppedUrl) {
-              setCoverFileUrl(croppedUrl);
-              setCoverFileKey('');
+              if (croppedUrl.startsWith('data:')) {
+                try {
+                  setIsUploadingCover(true);
+                  const safeTitle = (title || 'cover').replace(/[^a-zA-Z0-9]/g, '_');
+                  const uploadRes = await storageService.uploadDataUrl(
+                    croppedUrl,
+                    `${safeTitle}_crop_${Date.now()}.jpg`,
+                    { category: 'books/covers', onProgress: (pct) => setCoverUploadProgress(pct) }
+                  );
+                  setCoverFileUrl(uploadRes.fileUrl);
+                  setCoverFileKey(uploadRes.fileKey);
+                } catch (err: any) {
+                  setError(err.message || 'Failed to upload cropped cover to storage.');
+                } finally {
+                  setIsUploadingCover(false);
+                }
+              } else {
+                setCoverFileUrl(croppedUrl);
+              }
             }
           }}
         />

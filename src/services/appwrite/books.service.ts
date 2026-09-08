@@ -23,6 +23,23 @@ function setCachedCoverPosition(id: string, pos: string): void {
   } catch {}
 }
 
+export function extractPositionFromDoc(doc: any): string {
+  if (doc.coverImagePosition) return doc.coverImagePosition;
+  if (doc.coverFileKey && typeof doc.coverFileKey === 'string' && doc.coverFileKey.includes('#pos:')) {
+    try {
+      const parsed = decodeURIComponent(doc.coverFileKey.split('#pos:')[1]);
+      if (parsed) return parsed;
+    } catch {}
+  }
+  return getCachedCoverPosition(doc.$id) || 'center';
+}
+
+export function attachPositionToKey(key: string | null | undefined, position: string | undefined): string | null {
+  if (!position) return key || null;
+  const baseKey = key ? key.split('#pos:')[0] : '';
+  return baseKey ? `${baseKey}#pos:${encodeURIComponent(position)}` : `#pos:${encodeURIComponent(position)}`;
+}
+
 export const liveBooksService = {
   async getBooks(filters?: BookFilterOptions): Promise<BookWithReadingState[]> {
     const queries: string[] = [Query.orderDesc('$createdAt'), Query.limit(100)];
@@ -75,7 +92,7 @@ export const liveBooksService = {
         language: doc.language,
         coverFileUrl: doc.coverFileUrl,
         coverFileKey: doc.coverFileKey,
-        coverImagePosition: doc.coverImagePosition || getCachedCoverPosition(doc.$id) || 'center',
+        coverImagePosition: extractPositionFromDoc(doc),
         pdfFileUrl: doc.pdfFileUrl,
         pdfFileKey: doc.pdfFileKey,
         pdfFileName: doc.pdfFileName,
@@ -150,7 +167,7 @@ export const liveBooksService = {
         language: doc.language,
         coverFileUrl: doc.coverFileUrl,
         coverFileKey: doc.coverFileKey,
-        coverImagePosition: doc.coverImagePosition || getCachedCoverPosition(id) || 'center',
+        coverImagePosition: extractPositionFromDoc(doc),
         pdfFileUrl: doc.pdfFileUrl,
         pdfFileKey: doc.pdfFileKey,
         pdfFileName: doc.pdfFileName,
@@ -174,6 +191,8 @@ export const liveBooksService = {
         ]
       : [];
 
+    const effectiveKey = attachPositionToKey(data.coverFileKey, data.coverImagePosition);
+
     const createPayload: Record<string, any> = {
       ownerId: data.ownerId,
       title: data.title,
@@ -182,7 +201,7 @@ export const liveBooksService = {
       category: data.category,
       language: data.language,
       coverFileUrl: data.coverFileUrl || null,
-      coverFileKey: data.coverFileKey || null,
+      coverFileKey: effectiveKey || null,
       coverImagePosition: data.coverImagePosition || 'center',
       pdfFileUrl: data.pdfFileUrl || null,
       pdfFileKey: data.pdfFileKey || null,
@@ -248,7 +267,7 @@ export const liveBooksService = {
       language: bookDoc.language,
       coverFileUrl: bookDoc.coverFileUrl,
       coverFileKey: bookDoc.coverFileKey,
-      coverImagePosition: bookDoc.coverImagePosition || data.coverImagePosition || 'center',
+      coverImagePosition: extractPositionFromDoc(bookDoc) || data.coverImagePosition || 'center',
       pdfFileUrl: bookDoc.pdfFileUrl,
       pdfFileKey: bookDoc.pdfFileKey,
       pdfFileName: bookDoc.pdfFileName,
@@ -276,6 +295,23 @@ export const liveBooksService = {
       setCachedCoverPosition(id, data.coverImagePosition);
     }
 
+    // Fetch existing book key if needed to preserve base key while updating position
+    let existingKey: string | undefined = data.coverFileKey;
+    if (data.coverImagePosition !== undefined && existingKey === undefined) {
+      try {
+        const existingDoc = await databases.getDocument(
+          APPWRITE_CONFIG.databaseId,
+          APPWRITE_CONFIG.collections.books,
+          id
+        );
+        existingKey = existingDoc.coverFileKey || undefined;
+      } catch {}
+    }
+
+    const finalKey = (existingKey !== undefined || data.coverImagePosition !== undefined)
+      ? attachPositionToKey(existingKey, data.coverImagePosition)
+      : undefined;
+
     const updatePayload: Record<string, any> = {
       ...(data.title !== undefined && { title: data.title }),
       ...(data.author !== undefined && { author: data.author }),
@@ -283,7 +319,7 @@ export const liveBooksService = {
       ...(data.category !== undefined && { category: data.category }),
       ...(data.language !== undefined && { language: data.language }),
       ...(data.coverFileUrl !== undefined && { coverFileUrl: data.coverFileUrl || null }),
-      ...(data.coverFileKey !== undefined && { coverFileKey: data.coverFileKey || null }),
+      ...(finalKey !== undefined && { coverFileKey: finalKey }),
       ...(data.coverImagePosition !== undefined && { coverImagePosition: data.coverImagePosition }),
       ...(data.pdfFileUrl !== undefined && { pdfFileUrl: data.pdfFileUrl }),
       ...(data.pdfFileKey !== undefined && { pdfFileKey: data.pdfFileKey }),

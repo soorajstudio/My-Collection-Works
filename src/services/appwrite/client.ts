@@ -1,7 +1,7 @@
 import { Client, Account, Databases, Storage } from 'appwrite';
 
 const endpoint = import.meta.env.VITE_APPWRITE_ENDPOINT || 'https://cloud.appwrite.io/v1';
-const projectId = import.meta.env.VITE_APPWRITE_PROJECT_ID || 'my-library';
+const projectId = import.meta.env.VITE_APPWRITE_PROJECT_ID || '6a9e9053003be1fde2dc';
 
 export const appwriteClient = new Client();
 
@@ -24,5 +24,5 @@ export const APPWRITE_CONFIG = {
   },
   r2SignerEndpoint: import.meta.env.VITE_R2_SIGNER_ENDPOINT || '',
   r2PublicUrl: import.meta.env.VITE_R2_PUBLIC_URL || '',
-  isMock: import.meta.env.VITE_USE_MOCK_FALLBACK === 'true' || !import.meta.env.VITE_APPWRITE_PROJECT_ID || import.meta.env.VITE_APPWRITE_PROJECT_ID === 'my-library',
+  isMock: import.meta.env.VITE_USE_MOCK_FALLBACK === 'true',
 };

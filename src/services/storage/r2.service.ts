@@ -265,6 +265,19 @@ export const r2StorageService = {
     });
   },
 
+  async uploadDataUrl(dataUrl: string, fileName: string, options: UploadOptions): Promise<UploadResult> {
+    const arr = dataUrl.split(',');
+    const mime = arr[0].match(/:(.*?);/)?.[1] || 'image/jpeg';
+    const bstr = atob(arr[1]);
+    let n = bstr.length;
+    const u8arr = new Uint8Array(n);
+    while (n--) {
+      u8arr[n] = bstr.charCodeAt(n);
+    }
+    const file = new File([u8arr], fileName, { type: mime });
+    return this.uploadFile(file, options);
+  },
+
   async getDownloadUrl(fileKey: string): Promise<string> {
     if (APPWRITE_CONFIG.isMock || !APPWRITE_CONFIG.r2SignerEndpoint) {
       return '';
