@@ -3,6 +3,26 @@ import { databases, APPWRITE_CONFIG } from './client';
 import { Book, BookWithReadingState, ReadingState, BookFilterOptions, ReadingStatus } from '../../types/book.types';
 import { calculateProgressPercentage } from '../../utils/formatters';
 
+const COVER_POS_KEY = 'mylibrary_cover_positions_cache';
+
+function getCachedCoverPosition(id: string): string | undefined {
+  try {
+    const raw = localStorage.getItem(COVER_POS_KEY);
+    return raw ? JSON.parse(raw)[id] : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function setCachedCoverPosition(id: string, pos: string): void {
+  try {
+    const raw = localStorage.getItem(COVER_POS_KEY);
+    const map = raw ? JSON.parse(raw) : {};
+    map[id] = pos;
+    localStorage.setItem(COVER_POS_KEY, JSON.stringify(map));
+  } catch {}
+}
+
 export const liveBooksService = {
   async getBooks(filters?: BookFilterOptions): Promise<BookWithReadingState[]> {
     const queries: string[] = [Query.orderDesc('$createdAt'), Query.limit(100)];
@@ -55,7 +75,7 @@ export const liveBooksService = {
         language: doc.language,
         coverFileUrl: doc.coverFileUrl,
         coverFileKey: doc.coverFileKey,
-        coverImagePosition: doc.coverImagePosition || 'center',
+        coverImagePosition: doc.coverImagePosition || getCachedCoverPosition(doc.$id) || 'center',
         pdfFileUrl: doc.pdfFileUrl,
         pdfFileKey: doc.pdfFileKey,
         pdfFileName: doc.pdfFileName,
@@ -130,7 +150,7 @@ export const liveBooksService = {
         language: doc.language,
         coverFileUrl: doc.coverFileUrl,
         coverFileKey: doc.coverFileKey,
-        coverImagePosition: doc.coverImagePosition || 'center',
+        coverImagePosition: doc.coverImagePosition || getCachedCoverPosition(id) || 'center',
         pdfFileUrl: doc.pdfFileUrl,
         pdfFileKey: doc.pdfFileKey,
         pdfFileName: doc.pdfFileName,
@@ -214,6 +234,10 @@ export const liveBooksService = {
       permissions
     );
 
+    if (data.coverImagePosition) {
+      setCachedCoverPosition(bookDoc.$id, data.coverImagePosition);
+    }
+
     return {
       id: bookDoc.$id,
       ownerId: bookDoc.ownerId,
@@ -248,14 +272,18 @@ export const liveBooksService = {
   },
 
   async updateBook(id: string, data: Partial<Book>): Promise<BookWithReadingState> {
+    if (data.coverImagePosition) {
+      setCachedCoverPosition(id, data.coverImagePosition);
+    }
+
     const updatePayload: Record<string, any> = {
       ...(data.title !== undefined && { title: data.title }),
       ...(data.author !== undefined && { author: data.author }),
       ...(data.description !== undefined && { description: data.description }),
       ...(data.category !== undefined && { category: data.category }),
       ...(data.language !== undefined && { language: data.language }),
-      ...(data.coverFileUrl !== undefined && { coverFileUrl: data.coverFileUrl }),
-      ...(data.coverFileKey !== undefined && { coverFileKey: data.coverFileKey }),
+      ...(data.coverFileUrl !== undefined && { coverFileUrl: data.coverFileUrl || null }),
+      ...(data.coverFileKey !== undefined && { coverFileKey: data.coverFileKey || null }),
       ...(data.coverImagePosition !== undefined && { coverImagePosition: data.coverImagePosition }),
       ...(data.pdfFileUrl !== undefined && { pdfFileUrl: data.pdfFileUrl }),
       ...(data.pdfFileKey !== undefined && { pdfFileKey: data.pdfFileKey }),
@@ -288,6 +316,9 @@ export const liveBooksService = {
 
     const fullBook = await this.getBookById(bookDoc.$id);
     if (!fullBook) throw new Error('Failed to retrieve updated book');
+    if (data.coverImagePosition) {
+      fullBook.coverImagePosition = data.coverImagePosition;
+    }
     return fullBook;
   },
 

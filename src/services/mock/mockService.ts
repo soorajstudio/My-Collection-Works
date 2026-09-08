@@ -16,7 +16,7 @@ import {
 } from './mockData';
 import { calculateProgressPercentage, getCertificateExpiryStatus } from '../../utils/formatters';
 
-const DATA_VERSION = 'v2_custom_data';
+const DATA_VERSION = 'v3_cover_positions';
 
 const STORAGE_KEYS = {
   VERSION: 'mylibrary_data_version',
@@ -32,9 +32,37 @@ function initializeStorage() {
   const currentVersion = localStorage.getItem(STORAGE_KEYS.VERSION);
   if (currentVersion !== DATA_VERSION) {
     localStorage.setItem(STORAGE_KEYS.VERSION, DATA_VERSION);
-    localStorage.setItem(STORAGE_KEYS.BOOKS, JSON.stringify(INITIAL_MOCK_BOOKS));
-    localStorage.setItem(STORAGE_KEYS.PROJECTS, JSON.stringify(INITIAL_MOCK_PROJECTS));
-    localStorage.setItem(STORAGE_KEYS.CERTIFICATES, JSON.stringify(INITIAL_MOCK_CERTIFICATES));
+
+    // Smart merge: update initial mock books with new covers/positions while preserving user reading states & custom books
+    const existingRaw = localStorage.getItem(STORAGE_KEYS.BOOKS);
+    if (existingRaw) {
+      try {
+        const existingBooks: BookWithReadingState[] = JSON.parse(existingRaw);
+        const merged = INITIAL_MOCK_BOOKS.map((initBook) => {
+          const matched = existingBooks.find((b) => b.id === initBook.id);
+          if (!matched) return initBook;
+          return {
+            ...initBook,
+            readingState: matched.readingState || initBook.readingState,
+            coverFileUrl: matched.coverFileUrl || initBook.coverFileUrl,
+            coverImagePosition: matched.coverImagePosition || initBook.coverImagePosition || 'center',
+          };
+        });
+        const userAdded = existingBooks.filter((b) => !INITIAL_MOCK_BOOKS.some((ib) => ib.id === b.id));
+        localStorage.setItem(STORAGE_KEYS.BOOKS, JSON.stringify([...merged, ...userAdded]));
+      } catch {
+        localStorage.setItem(STORAGE_KEYS.BOOKS, JSON.stringify(INITIAL_MOCK_BOOKS));
+      }
+    } else {
+      localStorage.setItem(STORAGE_KEYS.BOOKS, JSON.stringify(INITIAL_MOCK_BOOKS));
+    }
+
+    if (!localStorage.getItem(STORAGE_KEYS.PROJECTS)) {
+      localStorage.setItem(STORAGE_KEYS.PROJECTS, JSON.stringify(INITIAL_MOCK_PROJECTS));
+    }
+    if (!localStorage.getItem(STORAGE_KEYS.CERTIFICATES)) {
+      localStorage.setItem(STORAGE_KEYS.CERTIFICATES, JSON.stringify(INITIAL_MOCK_CERTIFICATES));
+    }
   }
   if (!localStorage.getItem(STORAGE_KEYS.USER)) {
     localStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(INITIAL_MOCK_USER));
@@ -234,13 +262,24 @@ export const mockBooksService = {
     const index = books.findIndex((b) => b.id === id);
     if (index === -1) throw new Error('Book not found');
 
+    const cleanData: Record<string, any> = {};
+    for (const [k, v] of Object.entries(data)) {
+      if (v !== undefined) {
+        cleanData[k] = v;
+      }
+    }
+
     const updated = {
       ...books[index],
-      ...data,
+      ...cleanData,
       updatedAt: new Date().toISOString(),
     };
     books[index] = updated;
-    localStorage.setItem(STORAGE_KEYS.BOOKS, JSON.stringify(books));
+    try {
+      localStorage.setItem(STORAGE_KEYS.BOOKS, JSON.stringify(books));
+    } catch (err) {
+      console.warn('localStorage quota warning on updateBook:', err);
+    }
     return updated;
   },
 

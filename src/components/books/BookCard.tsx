@@ -84,6 +84,16 @@ export const BookCard: React.FC<BookCardProps> = ({
           <Button
             variant="ghost"
             size="sm"
+            onClick={() => onEdit(book)}
+            title="Edit Book Details & Cover"
+            className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+          >
+            <Edit3 className="w-4 h-4" />
+          </Button>
+
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={() => onToggleWishlist(book.id)}
             className={wishlist ? 'text-rose-500 dark:text-rose-400 hover:text-rose-600' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'}
           >
@@ -123,13 +133,26 @@ export const BookCard: React.FC<BookCardProps> = ({
             <Badge variant={categoryVariant}>{book.category}</Badge>
           </div>
 
-          {/* Top Right: Wishlist Toggle */}
-          <button
-            onClick={() => onToggleWishlist(book.id)}
-            className="absolute top-3 right-3 p-2 rounded-full glass-panel border border-white/20 text-slate-400 hover:text-rose-500 transition-colors shadow-lg"
-          >
-            <Heart className={`w-3.5 h-3.5 ${wishlist ? 'fill-rose-500 text-rose-500 dark:fill-rose-400 dark:text-rose-400' : ''}`} />
-          </button>
+          {/* Top Right: Actions (Edit & Wishlist) */}
+          <div className="absolute top-3 right-3 flex items-center gap-1.5 z-10">
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onEdit(book);
+              }}
+              title="Edit Book Details & Cover"
+              className="p-2 rounded-full glass-panel border border-white/20 text-slate-300 hover:text-white bg-slate-950/60 hover:bg-slate-900 transition-colors shadow-lg opacity-90 sm:opacity-0 sm:group-hover:opacity-100"
+            >
+              <Edit3 className="w-3.5 h-3.5" />
+            </button>
+            <button
+              onClick={() => onToggleWishlist(book.id)}
+              className="p-2 rounded-full glass-panel border border-white/20 text-slate-400 hover:text-rose-500 bg-slate-950/60 hover:bg-slate-900 transition-colors shadow-lg"
+            >
+              <Heart className={`w-3.5 h-3.5 ${wishlist ? 'fill-rose-500 text-rose-500 dark:fill-rose-400 dark:text-rose-400' : ''}`} />
+            </button>
+          </div>
 
           {/* Bottom Overlay Progress Bar */}
           <div className="absolute bottom-0 inset-x-0 p-3 bg-gradient-to-t from-slate-950/90 via-slate-950/60 to-transparent">

@@ -162,7 +162,36 @@ export const r2StorageService = {
       if (isImage) {
         fileUrl = await new Promise<string>((resolve) => {
           const reader = new FileReader();
-          reader.onloadend = () => resolve(reader.result as string);
+          reader.onload = (e) => {
+            const img = new Image();
+            img.onload = () => {
+              let { width, height } = img;
+              const maxDim = 1000;
+              if (width > maxDim || height > maxDim) {
+                if (width > height) {
+                  height = Math.round((height * maxDim) / width);
+                  width = maxDim;
+                } else {
+                  width = Math.round((width * maxDim) / height);
+                  height = maxDim;
+                }
+              }
+              const canvas = document.createElement('canvas');
+              canvas.width = width;
+              canvas.height = height;
+              const ctx = canvas.getContext('2d');
+              if (ctx) {
+                ctx.drawImage(img, 0, 0, width, height);
+                try {
+                  resolve(canvas.toDataURL('image/jpeg', 0.82));
+                  return;
+                } catch {}
+              }
+              resolve(e.target?.result as string || URL.createObjectURL(file));
+            };
+            img.onerror = () => resolve(URL.createObjectURL(file));
+            img.src = e.target?.result as string;
+          };
           reader.onerror = () => resolve(URL.createObjectURL(file));
           reader.readAsDataURL(file);
         });
