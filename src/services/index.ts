@@ -1,9 +1,11 @@
-import { APPWRITE_CONFIG } from './appwrite/client';
-import { liveAuthService } from './appwrite/auth.service';
-import { liveBooksService } from './appwrite/books.service';
-import { liveCertificatesService } from './appwrite/certificates.service';
-import { liveProjectsService } from './appwrite/projects.service';
-import { liveDashboardService } from './appwrite/dashboard.service';
+﻿import {
+  supabaseAuthService,
+  supabaseBooksService,
+  supabaseCertificatesService,
+  supabaseProjectsService,
+  supabaseDashboardService,
+  supabaseStorageService,
+} from './supabase';
 import {
   mockAuthService,
   mockBooksService,
@@ -11,28 +13,27 @@ import {
   mockProjectsService,
   mockDashboardService,
 } from './mock/mockService';
-import { r2StorageService } from './storage/r2.service';
 
-export const isMockMode = APPWRITE_CONFIG.isMock;
+export const isMockMode = import.meta.env.VITE_USE_MOCK_FALLBACK === 'true';
 
-// Unified Auth Service (Live Appwrite Auth vs. Local Mock Driver)
-export const authService = isMockMode ? mockAuthService : liveAuthService;
+// Unified Auth Service (Supabase Auth vs Local Mock Driver)
+export const authService = isMockMode ? mockAuthService : supabaseAuthService;
 
-// Unified Books Service (Live Appwrite Database vs. Local Mock Driver)
-export const booksService = isMockMode ? mockBooksService : liveBooksService;
+// Unified Books Service (Supabase Database vs Local Mock Driver)
+export const booksService = isMockMode ? mockBooksService : supabaseBooksService;
 
-// Unified Certificates Service (Live Appwrite Database vs. Local Mock Driver)
-export const certificatesService = isMockMode ? mockCertificatesService : liveCertificatesService;
+// Unified Certificates Service (Supabase Database vs Local Mock Driver)
+export const certificatesService = isMockMode ? mockCertificatesService : supabaseCertificatesService;
 
-// Unified Projects Service (Live Appwrite Database vs. Local Mock Driver)
-export const projectsService = isMockMode ? mockProjectsService : liveProjectsService;
+// Unified Projects Service (Supabase Database vs Local Mock Driver)
+export const projectsService = isMockMode ? mockProjectsService : supabaseProjectsService;
 
-// Unified Dashboard Service (Live Appwrite Aggregator vs. Local Mock Driver)
-export const dashboardService = isMockMode ? mockDashboardService : liveDashboardService;
+// Unified Dashboard Service (Supabase Aggregator vs Local Mock Driver)
+export const dashboardService = isMockMode ? mockDashboardService : supabaseDashboardService;
 
-// Unified Storage Service
-export const storageService = r2StorageService;
+// Unified Storage Service (Supabase Storage)
+export const storageService = supabaseStorageService;
 
-export * from './storage/r2.service';
+export * from './supabase/storage.service';
 export * from './bookSearchApi.service';
-
+export * from './supabase';
