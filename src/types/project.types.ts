@@ -1,4 +1,4 @@
-﻿export type ProjectStatus = 'Planned' | 'In Progress' | 'Completed' | 'Archived';
+export type ProjectStatus = 'Planned' | 'In Progress' | 'Completed' | 'Archived';
 
 export interface Project {
   id: string;
@@ -18,6 +18,7 @@ export interface Project {
   tags?: string[];
   appIconKey?: string;
   appIconUrl?: string;
+  projectType?: 'website' | 'app';
   screenshotKeys?: string[];
   screenshotUrls?: string[];
   apkFileKey?: string;
@@ -35,6 +36,7 @@ export interface ProjectFilterOptions {
   category?: string;
   technology?: string;
   status?: ProjectStatus | 'All';
+  projectType?: 'website' | 'app' | 'all';
   sortBy?: 'recent' | 'name' | 'status';
   sortOrder?: 'asc' | 'desc';
 }

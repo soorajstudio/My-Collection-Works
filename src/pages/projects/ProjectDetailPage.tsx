@@ -11,6 +11,9 @@ import {
   Code2,
   ExternalLink,
   Layers,
+  Image as ImageIcon,
+  Smartphone,
+  X,
 } from 'lucide-react';
 import { GitHubIcon } from '../../components/common/GitHubIcon';
 import { projectsService } from '../../services';
@@ -28,6 +31,7 @@ export const ProjectDetailPage: React.FC = () => {
   const [project, setProject] = useState<Project | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [activeScreenshot, setActiveScreenshot] = useState<string | null>(null);
   const { success, error } = useToast();
 
   const loadProject = async () => {
@@ -140,7 +144,20 @@ export const ProjectDetailPage: React.FC = () => {
             <div className="space-y-1.5">
               <div className="flex flex-wrap items-center gap-2">
                 <Badge variant={statusVariant} size="md">{project.status}</Badge>
-                <Badge variant="cyan" size="md">{project.category}</Badge>
+                {project.projectType === 'app' || project.category === 'Mobile Application' || Boolean(project.apkFileUrl || project.apkFileName) ? (
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
+                    <Smartphone className="w-3.5 h-3.5" />
+                    Mobile Application
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                    <Globe className="w-3.5 h-3.5" />
+                    Web Application
+                  </span>
+                )}
+                {project.category && (
+                  <Badge variant="cyan" size="md">{project.category}</Badge>
+                )}
               </div>
               <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">
                 {project.name}
@@ -156,7 +173,17 @@ export const ProjectDetailPage: React.FC = () => {
             {project.liveDemoUrl && (
               <a href={project.liveDemoUrl} target="_blank" rel="noopener noreferrer">
                 <Button variant="primary" size="sm" leftIcon={<Globe className="w-4 h-4" />}>
-                  Live Demo
+                  Visit Website
+                </Button>
+              </a>
+            )}
+            {(project.apkFileUrl || project.downloadUrl) && (
+              <a
+                href={project.apkFileUrl || project.downloadUrl}
+                download={project.apkFileName || `${project.name}.apk`}
+              >
+                <Button variant="primary" size="sm" leftIcon={<Download className="w-4 h-4" />}>
+                  Download APK
                 </Button>
               </a>
             )}
@@ -170,8 +197,8 @@ export const ProjectDetailPage: React.FC = () => {
           </div>
         </div>
 
-        {/* APK Release Asset Box (Cloudflare R2) */}
-        {project.apkFileName && (
+        {/* APK Release Asset Box */}
+        {(project.apkFileName || project.apkFileUrl) && (
           <div className="p-4 rounded-2xl bg-gradient-to-r from-emerald-50 to-slate-50 dark:from-emerald-950/40 dark:to-slate-900 border border-emerald-500/20 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shrink-0">
@@ -179,20 +206,22 @@ export const ProjectDetailPage: React.FC = () => {
               </div>
               <div>
                 <h4 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white">Android Package Release (APK)</h4>
-                <p className="text-xs text-slate-600 dark:text-slate-400 font-mono mt-0.5">{project.apkFileName}</p>
+                <p className="text-xs text-slate-600 dark:text-slate-400 font-mono mt-0.5">
+                  {project.apkFileName || `${project.name}.apk`}
+                </p>
               </div>
             </div>
-            {project.apkFileUrl || project.downloadUrl ? (
+            {(project.apkFileUrl || project.downloadUrl) && (
               <a
                 href={project.apkFileUrl || project.downloadUrl}
-                download={project.apkFileName}
+                download={project.apkFileName || `${project.name}.apk`}
                 className="shrink-0"
               >
                 <Button variant="secondary" size="sm" leftIcon={<Download className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />}>
                   Download APK
                 </Button>
               </a>
-            ) : null}
+            )}
           </div>
         )}
 
@@ -213,6 +242,38 @@ export const ProjectDetailPage: React.FC = () => {
             ))}
           </div>
         </div>
+
+        {/* Screenshots / Previews Gallery */}
+        {project.screenshotUrls && project.screenshotUrls.length > 0 && (
+          <div className="space-y-3">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-2">
+              <ImageIcon className="w-3.5 h-3.5 text-indigo-500 dark:text-indigo-400" />
+              <span>Screenshots & Visuals ({project.screenshotUrls.length})</span>
+            </h3>
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+              {project.screenshotUrls.map((url, i) => (
+                <button
+                  key={i}
+                  type="button"
+                  onClick={() => setActiveScreenshot(url)}
+                  className="group relative aspect-video rounded-xl overflow-hidden border border-slate-200 dark:border-white/10 bg-slate-100 dark:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-left"
+                >
+                  <img
+                    src={url}
+                    alt={`${project.name} preview ${i + 1}`}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                    loading="lazy"
+                  />
+                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                    <span className="text-[11px] font-semibold text-white px-2 py-1 rounded-md bg-black/60 backdrop-blur-sm">
+                      View full
+                    </span>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Key Features List */}
         {project.features && project.features.length > 0 && (
@@ -270,6 +331,32 @@ export const ProjectDetailPage: React.FC = () => {
         initialData={project}
         onSubmit={handleSaveEdit}
       />
+
+      {/* Screenshot Lightbox Modal */}
+      {activeScreenshot && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-sm p-4 animate-in fade-in duration-200"
+          onClick={() => setActiveScreenshot(null)}
+        >
+          <div
+            className="relative max-w-5xl max-h-[90vh] overflow-hidden rounded-2xl bg-slate-950 border border-white/20 p-2 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              onClick={() => setActiveScreenshot(null)}
+              className="absolute top-4 right-4 p-2 rounded-xl bg-black/60 text-white hover:bg-black/90 transition-colors z-10"
+              aria-label="Close preview"
+            >
+              <X className="w-5 h-5" />
+            </button>
+            <img
+              src={activeScreenshot}
+              alt="Screenshot preview"
+              className="max-h-[85vh] w-auto max-w-full rounded-xl object-contain mx-auto"
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 };

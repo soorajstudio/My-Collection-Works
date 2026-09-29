@@ -1,12 +1,62 @@
 ﻿import { supabase } from './client';
 import { Project, ProjectFilterOptions } from '../../types/project.types';
 
+function mapProjectFromRow(doc: any): Project {
+  const isMobile =
+    doc.category === 'Mobile Application' ||
+    doc.category === 'Mobile App' ||
+    Boolean(doc.live_url && (doc.live_url.includes('.apk') || doc.live_url.includes('#apk=')));
+
+  const projectType: 'website' | 'app' = isMobile ? 'app' : 'website';
+
+  let apkFileUrl: string | undefined = undefined;
+  let apkFileName: string | undefined = undefined;
+  let liveDemoUrl: string | undefined = doc.live_url || undefined;
+
+  if (isMobile && doc.live_url) {
+    if (doc.live_url.includes('#apk=')) {
+      const parts = doc.live_url.split('#apk=');
+      apkFileUrl = parts[0];
+      apkFileName = decodeURIComponent(parts[1]);
+      liveDemoUrl = undefined;
+    } else if (doc.live_url.endsWith('.apk')) {
+      apkFileUrl = doc.live_url;
+      apkFileName = doc.live_url.split('/').pop()?.split('?')[0] || 'app-release.apk';
+      liveDemoUrl = undefined;
+    }
+  }
+
+  return {
+    id: doc.id,
+    ownerId: doc.owner_id,
+    name: doc.title,
+    shortDescription: doc.tagline || '',
+    detailedDescription: doc.description,
+    category: doc.category || (isMobile ? 'Mobile Application' : 'Web Application'),
+    projectType,
+    technologies: doc.tech_stack || [],
+    features: doc.features || [],
+    status: doc.status || 'Planned',
+    githubUrl: doc.github_url || undefined,
+    liveDemoUrl,
+    apkFileUrl,
+    apkFileName,
+    appIconUrl: doc.icon_url || undefined,
+    screenshotUrls: Array.isArray(doc.screenshots) ? doc.screenshots : [],
+    createdAt: doc.created_at,
+    updatedAt: doc.updated_at,
+  };
+}
+
 export const supabaseProjectsService = {
   async getProjects(filters?: ProjectFilterOptions): Promise<Project[]> {
     let query = supabase.from('projects').select('*').order('created_at', { ascending: false });
 
     if (filters?.status && filters.status !== 'All') {
       query = query.eq('status', filters.status);
+    }
+    if (filters?.category && filters.category !== 'All') {
+      query = query.eq('category', filters.category);
     }
 
     const { data, error } = await query;
@@ -15,23 +65,11 @@ export const supabaseProjectsService = {
       return [];
     }
 
-    let projects: Project[] = (data || []).map((doc: any) => ({
-      id: doc.id,
-      ownerId: doc.owner_id,
-      name: doc.title,
-      shortDescription: doc.tagline || '',
-      detailedDescription: doc.description,
-      category: doc.category || 'Web Application',
-      technologies: doc.tech_stack || [],
-      features: [],
-      status: doc.status || 'Planned',
-      githubUrl: doc.github_url,
-      liveDemoUrl: doc.live_url,
-      appIconUrl: doc.icon_url,
-      screenshotUrls: doc.screenshots || [],
-      createdAt: doc.created_at,
-      updatedAt: doc.updated_at,
-    }));
+    let projects: Project[] = (data || []).map(mapProjectFromRow);
+
+    if (filters?.projectType && filters.projectType !== 'all') {
+      projects = projects.filter((p) => p.projectType === filters.projectType);
+    }
 
     if (filters?.search) {
       const q = filters.search.toLowerCase().trim();
@@ -54,38 +92,31 @@ export const supabaseProjectsService = {
       .maybeSingle();
 
     if (error || !doc) return null;
-
-    return {
-      id: doc.id,
-      ownerId: doc.owner_id,
-      name: doc.title,
-      shortDescription: doc.tagline || '',
-      detailedDescription: doc.description,
-      category: doc.category || 'Web Application',
-      technologies: doc.tech_stack || [],
-      features: [],
-      status: doc.status || 'Planned',
-      githubUrl: doc.github_url,
-      liveDemoUrl: doc.live_url,
-      appIconUrl: doc.icon_url,
-      screenshotUrls: doc.screenshots || [],
-      createdAt: doc.created_at,
-      updatedAt: doc.updated_at,
-    };
+    return mapProjectFromRow(doc);
   },
 
   async createProject(data: Partial<Project>): Promise<Project> {
     const projectId = `proj_${Date.now()}`;
+    const isApp = data.projectType === 'app' || data.category === 'Mobile Application';
+    const effectiveCategory = isApp ? 'Mobile Application' : (data.category || 'Web Application');
+
+    let effectiveLiveUrl = data.liveDemoUrl || null;
+    if (isApp && data.apkFileUrl) {
+      effectiveLiveUrl = data.apkFileName
+        ? `${data.apkFileUrl}#apk=${encodeURIComponent(data.apkFileName)}`
+        : data.apkFileUrl;
+    }
+
     const payload = {
       id: projectId,
       owner_id: data.ownerId || 'sooraj_user',
       title: data.name || 'Untitled Project',
       tagline: data.shortDescription || '',
       description: data.detailedDescription || '',
-      category: data.category || 'Web Application',
+      category: effectiveCategory,
       status: data.status || 'Planned',
       github_url: data.githubUrl || null,
-      live_url: data.liveDemoUrl || null,
+      live_url: effectiveLiveUrl,
       icon_url: data.appIconUrl || null,
       tech_stack: data.technologies || [],
       screenshots: data.screenshotUrls || [],
@@ -98,38 +129,34 @@ export const supabaseProjectsService = {
       .single();
 
     if (error) throw new Error(error.message);
-
-    return {
-      id: created.id,
-      ownerId: created.owner_id,
-      name: created.title,
-      shortDescription: created.tagline,
-      detailedDescription: created.description,
-      category: created.category,
-      technologies: created.tech_stack || [],
-      features: [],
-      status: created.status,
-      githubUrl: created.github_url,
-      liveDemoUrl: created.live_url,
-      appIconUrl: created.icon_url,
-      screenshotUrls: created.screenshots || [],
-      createdAt: created.created_at,
-      updatedAt: created.updated_at,
-    };
+    return mapProjectFromRow(created);
   },
 
   async updateProject(id: string, data: Partial<Project>): Promise<Project> {
+    const isApp = data.projectType === 'app' || data.category === 'Mobile Application';
     const payload: Record<string, any> = {
       updated_at: new Date().toISOString(),
     };
+
     if (data.name !== undefined) payload.title = data.name;
     if (data.shortDescription !== undefined) payload.tagline = data.shortDescription;
     if (data.detailedDescription !== undefined) payload.description = data.detailedDescription;
     if (data.category !== undefined) payload.category = data.category;
+    else if (data.projectType !== undefined) {
+      payload.category = isApp ? 'Mobile Application' : 'Web Application';
+    }
     if (data.status !== undefined) payload.status = data.status;
     if (data.technologies !== undefined) payload.tech_stack = data.technologies;
     if (data.githubUrl !== undefined) payload.github_url = data.githubUrl;
-    if (data.liveDemoUrl !== undefined) payload.live_url = data.liveDemoUrl;
+
+    if (isApp && data.apkFileUrl !== undefined) {
+      payload.live_url = data.apkFileUrl
+        ? (data.apkFileName ? `${data.apkFileUrl}#apk=${encodeURIComponent(data.apkFileName)}` : data.apkFileUrl)
+        : null;
+    } else if (data.liveDemoUrl !== undefined) {
+      payload.live_url = data.liveDemoUrl;
+    }
+
     if (data.appIconUrl !== undefined) payload.icon_url = data.appIconUrl;
     if (data.screenshotUrls !== undefined) payload.screenshots = data.screenshotUrls;
 

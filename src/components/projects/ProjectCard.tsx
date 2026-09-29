@@ -28,13 +28,23 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({
       ? 'indigo'
       : 'slate';
 
+  const isApp =
+    project.projectType === 'app' ||
+    project.category === 'Mobile Application' ||
+    Boolean(project.apkFileUrl || project.apkFileName);
+
+  const displayIcon =
+    project.appIconUrl ||
+    (project.screenshotUrls && project.screenshotUrls.length > 0 ? project.screenshotUrls[0] : null) ||
+    'https://images.unsplash.com/photo-1555066931-4365d14bab8c?w=120&auto=format&fit=crop&q=80';
+
   if (viewMode === 'list') {
     return (
       <div className="glass-card rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 group">
         <div className="flex items-center gap-3.5 min-w-0">
           <Link to={`/projects/${project.id}`} className="shrink-0">
             <img
-              src={project.appIconUrl || 'https://images.unsplash.com/photo-1555066931-4365d14bab8c?w=100&auto=format&fit=crop&q=80'}
+              src={displayIcon}
               alt={project.name}
               className="w-12 h-12 rounded-xl object-cover border border-white/10 shadow-md group-hover:scale-105 transition-transform"
             />
@@ -42,10 +52,23 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-1.5 mb-1">
               <Badge variant={statusVariant}>{project.status}</Badge>
-              <Badge variant="cyan">{project.category}</Badge>
+              {isApp ? (
+                <span className="text-[10px] text-blue-600 dark:text-blue-400 font-semibold px-2 py-0.5 rounded-full bg-blue-500/10 border border-blue-500/20">
+                  📱 Mobile App
+                </span>
+              ) : (
+                <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20">
+                  🌐 Website
+                </span>
+              )}
               {project.apkFileName && (
                 <span className="text-[10px] text-emerald-400 font-semibold px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20">
                   APK
+                </span>
+              )}
+              {project.screenshotUrls && project.screenshotUrls.length > 0 && (
+                <span className="text-[10px] text-slate-500 dark:text-slate-400 font-medium px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700">
+                  {project.screenshotUrls.length} {project.screenshotUrls.length === 1 ? 'image' : 'images'}
                 </span>
               )}
             </div>
@@ -76,17 +99,17 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({
               target="_blank"
               rel="noopener noreferrer"
               className="p-2 rounded-xl text-slate-500 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-slate-800/60 transition-colors"
-              title="Live Demo"
+              title="Visit Website"
             >
               <Globe className="w-4 h-4" />
             </a>
           )}
-          {project.downloadUrl && (
+          {(project.apkFileUrl || project.downloadUrl) && (
             <a
-              href={project.downloadUrl}
-              download
-              className="p-2 rounded-xl text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-slate-800/60 transition-colors"
-              title="Download Build"
+              href={project.apkFileUrl || project.downloadUrl}
+              download={project.apkFileName || `${project.name}.apk`}
+              className="p-2 rounded-xl text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-slate-800/60 transition-colors"
+              title={`Download APK (${project.apkFileName || 'app-release.apk'})`}
             >
               <Download className="w-4 h-4" />
             </a>
@@ -102,12 +125,21 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({
       <div>
         <div className="flex items-start justify-between gap-3 mb-3">
           <img
-            src={project.appIconUrl || 'https://images.unsplash.com/photo-1555066931-4365d14bab8c?w=120&auto=format&fit=crop&q=80'}
+            src={displayIcon}
             alt=""
             className="w-12 h-12 rounded-xl object-cover border border-slate-200 dark:border-white/10 shadow-md group-hover:scale-105 transition-transform"
           />
-          <div className="flex items-center gap-1.5">
+          <div className="flex flex-wrap items-center gap-1.5">
             <Badge variant={statusVariant}>{project.status}</Badge>
+            {isApp ? (
+              <span className="text-[10px] text-blue-600 dark:text-blue-400 font-semibold px-2 py-0.5 rounded-full bg-blue-500/10 border border-blue-500/20">
+                📱 App
+              </span>
+            ) : (
+              <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20">
+                🌐 Website
+              </span>
+            )}
             {project.apkFileName && (
               <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20">
                 APK
@@ -124,6 +156,24 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({
         <p className="text-xs text-slate-600 dark:text-slate-400 line-clamp-2 mt-1 leading-relaxed">
           {project.shortDescription}
         </p>
+
+        {project.screenshotUrls && project.screenshotUrls.length > 0 && (
+          <div className="mt-3 flex items-center gap-1.5 overflow-hidden">
+            {project.screenshotUrls.slice(0, 3).map((url, idx) => (
+              <img
+                key={idx}
+                src={url}
+                alt="preview"
+                className="w-14 h-10 object-cover rounded-lg border border-slate-200 dark:border-slate-800"
+              />
+            ))}
+            {project.screenshotUrls.length > 3 && (
+              <span className="text-[10px] font-semibold text-slate-500 px-1.5 py-1 bg-slate-100 dark:bg-slate-800 rounded-md">
+                +{project.screenshotUrls.length - 3}
+              </span>
+            )}
+          </div>
+        )}
 
         {project.technologies && project.technologies.length > 0 && (
           <div className="flex flex-wrap gap-1.5 mt-3">
@@ -168,9 +218,19 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({
               target="_blank"
               rel="noopener noreferrer"
               className="p-1.5 rounded-lg text-slate-400 hover:text-emerald-500 hover:bg-emerald-500/10 transition-colors"
-              title="Live Website"
+              title="Visit Website"
             >
               <Globe className="w-4 h-4" />
+            </a>
+          )}
+          {(project.apkFileUrl || project.downloadUrl) && (
+            <a
+              href={project.apkFileUrl || project.downloadUrl}
+              download={project.apkFileName || `${project.name}.apk`}
+              className="p-1.5 rounded-lg text-emerald-500 hover:text-emerald-400 hover:bg-emerald-500/10 transition-colors"
+              title={`Download APK (${project.apkFileName || 'app-release.apk'})`}
+            >
+              <Download className="w-4 h-4" />
             </a>
           )}
         </div>

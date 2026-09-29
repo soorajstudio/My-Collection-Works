@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Search, Grid, List, Plus, Code2 } from 'lucide-react';
+import { Search, Grid, List, Plus, Code2, Globe, Smartphone } from 'lucide-react';
 import { projectsService } from '../../services';
 import { Project, ProjectStatus } from '../../types/project.types';
 import { ProjectCard } from '../../components/projects/ProjectCard';
@@ -21,9 +21,11 @@ export const ProjectsListPage: React.FC = () => {
   const [category, setCategory] = useState(searchParams.get('category') || 'All');
   const [status, setStatus] = useState<string>(searchParams.get('status') || 'All');
   const [technology, setTechnology] = useState(searchParams.get('tech') || 'All');
+  const [projectTypeFilter, setProjectTypeFilter] = useState<'all' | 'website' | 'app'>('all');
   const [sortBy, setSortBy] = useState<'recent' | 'name' | 'status'>('recent');
 
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [modalInitialType, setModalInitialType] = useState<'website' | 'app'>('website');
   const [projToEdit, setProjToEdit] = useState<Project | null>(null);
 
   const { success, error } = useToast();
@@ -36,6 +38,7 @@ export const ProjectsListPage: React.FC = () => {
         category: category !== 'All' ? category : undefined,
         status: status !== 'All' ? (status as ProjectStatus) : undefined,
         technology: technology !== 'All' ? technology : undefined,
+        projectType: projectTypeFilter !== 'all' ? projectTypeFilter : undefined,
         sortBy,
         sortOrder: 'desc',
       });
@@ -49,7 +52,7 @@ export const ProjectsListPage: React.FC = () => {
 
   useEffect(() => {
     loadProjects();
-  }, [search, category, status, technology, sortBy]);
+  }, [search, category, status, technology, projectTypeFilter, sortBy]);
 
   const handleSaveProject = async (data: any) => {
     try {
@@ -106,21 +109,70 @@ export const ProjectsListPage: React.FC = () => {
           </div>
 
           <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => {
+              setProjToEdit(null);
+              setModalInitialType('website');
+              setIsAddModalOpen(true);
+            }}
+            leftIcon={<Globe className="w-4 h-4 text-emerald-500" />}
+          >
+            Add Website
+          </Button>
+
+          <Button
             variant="primary"
             size="sm"
             onClick={() => {
               setProjToEdit(null);
+              setModalInitialType('app');
               setIsAddModalOpen(true);
             }}
-            leftIcon={<Plus className="w-4 h-4" />}
+            leftIcon={<Smartphone className="w-4 h-4" />}
           >
-            Record Project
+            Add Mobile App
           </Button>
         </div>
       </div>
 
       {/* Filters Bar */}
       <div className="glass-card rounded-2xl p-4 border border-slate-200/80 dark:border-white/[0.07] space-y-3">
+        {/* Project Type Filter Tabs */}
+        <div className="flex items-center gap-2 pb-2 border-b border-slate-200/80 dark:border-white/[0.07] overflow-x-auto">
+          <button
+            onClick={() => setProjectTypeFilter('all')}
+            className={`px-3 py-1 rounded-xl text-xs font-semibold transition-all ${
+              projectTypeFilter === 'all'
+                ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-sm'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/50'
+            }`}
+          >
+            All Projects
+          </button>
+          <button
+            onClick={() => setProjectTypeFilter('website')}
+            className={`flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-semibold transition-all ${
+              projectTypeFilter === 'website'
+                ? 'bg-emerald-600 text-white shadow-sm'
+                : 'text-slate-600 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/30'
+            }`}
+          >
+            <Globe className="w-3.5 h-3.5" />
+            <span>Websites</span>
+          </button>
+          <button
+            onClick={() => setProjectTypeFilter('app')}
+            className={`flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-semibold transition-all ${
+              projectTypeFilter === 'app'
+                ? 'bg-blue-600 text-white shadow-sm'
+                : 'text-slate-600 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/30'
+            }`}
+          >
+            <Smartphone className="w-3.5 h-3.5" />
+            <span>Mobile Apps</span>
+          </button>
+        </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
           <div className="lg:col-span-2 relative">
             <Search className="w-4 h-4 text-slate-400 dark:text-slate-500 absolute left-3.5 top-3" />
@@ -231,6 +283,7 @@ export const ProjectsListPage: React.FC = () => {
           setProjToEdit(null);
         }}
         initialData={projToEdit}
+        initialType={modalInitialType}
         onSubmit={handleSaveProject}
       />
     </div>

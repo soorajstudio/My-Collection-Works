@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Search, Plus, BookOpen, Award, Code2, LogOut, User, Settings, Sparkles, Menu, Compass } from 'lucide-react';
+import { Search, Plus, BookOpen, Award, Code2, LogOut, User, Settings, Sparkles, Menu, Compass, Globe, Smartphone } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { Button } from '../common/Button';
 import { ThemeToggle } from '../common/ThemeToggle';
 
 interface NavbarProps {
   onOpenSearch: () => void;
-  onOpenAddModal: (type: 'book' | 'certificate' | 'project') => void;
+  onOpenAddModal: (type: 'book' | 'certificate' | 'project' | 'website' | 'app') => void;
   onToggleMobileSidebar: () => void;
 }
 
@@ -132,12 +132,22 @@ export const Navbar: React.FC<NavbarProps> = ({
                     <button
                       onClick={() => {
                         setShowAddMenu(false);
-                        onOpenAddModal('project');
+                        onOpenAddModal('website');
                       }}
                       className="w-full flex items-center gap-2.5 px-3.5 py-2 text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-emerald-50 dark:hover:bg-emerald-600/20 hover:text-emerald-600 dark:hover:text-white transition-colors"
                     >
-                      <Code2 className="w-4 h-4 text-emerald-500 dark:text-emerald-400" />
-                      <span>Add Project</span>
+                      <Globe className="w-4 h-4 text-emerald-500 dark:text-emerald-400" />
+                      <span>Add Website</span>
+                    </button>
+                    <button
+                      onClick={() => {
+                        setShowAddMenu(false);
+                        onOpenAddModal('app');
+                      }}
+                      className="w-full flex items-center gap-2.5 px-3.5 py-2 text-xs font-medium text-slate-700 dark:text-slate-200 hover:bg-blue-50 dark:hover:bg-blue-600/20 hover:text-blue-600 dark:hover:text-white transition-colors"
+                    >
+                      <Smartphone className="w-4 h-4 text-blue-500 dark:text-blue-400" />
+                      <span>Add Mobile App</span>
                     </button>
                   </div>
                 </>

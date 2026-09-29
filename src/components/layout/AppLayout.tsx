@@ -13,7 +13,7 @@ import { useToast } from '../../context/ToastContext';
 export const AppLayout: React.FC = () => {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
-  const [activeAddModal, setActiveAddModal] = useState<'book' | 'certificate' | 'project' | null>(null);
+  const [activeAddModal, setActiveAddModal] = useState<'book' | 'certificate' | 'project' | 'website' | 'app' | null>(null);
   const { success, error } = useToast();
 
   const handleCreateBook = async (data: any) => {
@@ -91,7 +91,8 @@ export const AppLayout: React.FC = () => {
       />
 
       <ProjectFormModal
-        isOpen={activeAddModal === 'project'}
+        isOpen={activeAddModal === 'project' || activeAddModal === 'website' || activeAddModal === 'app'}
+        initialType={activeAddModal === 'app' ? 'app' : 'website'}
         onClose={() => setActiveAddModal(null)}
         onSubmit={handleCreateProject}
       />
