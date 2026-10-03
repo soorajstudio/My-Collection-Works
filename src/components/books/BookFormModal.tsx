@@ -7,22 +7,16 @@ import { BookCategory, BookWithReadingState } from '../../types/book.types';
 import { storageService, searchAllLiterature, ExternalBookCandidate } from '../../services';
 import {
   UploadCloud,
-  FileText,
   CheckCircle2,
   AlertCircle,
   Sparkles,
   Search,
   Loader2,
-  Focus,
-  Crop,
   Image as ImageIcon,
   Link as LinkIcon,
   X,
-  ArrowUp,
-  ArrowDown,
 } from 'lucide-react';
 import { Badge } from '../common/Badge';
-import { CoverCropModal } from './CoverCropModal';
 
 interface BookFormModalProps {
   isOpen: boolean;
@@ -50,7 +44,6 @@ export const BookFormModal: React.FC<BookFormModalProps> = ({
   const [coverFileKey, setCoverFileKey] = useState('');
   const [coverImagePosition, setCoverImagePosition] = useState<string>('center');
   const [isCustomUrlMode, setIsCustomUrlMode] = useState(false);
-  const [isCropperOpen, setIsCropperOpen] = useState(false);
   const [pdfFileName, setPdfFileName] = useState('');
   const [pdfFileKey, setPdfFileKey] = useState('');
   
@@ -62,8 +55,6 @@ export const BookFormModal: React.FC<BookFormModalProps> = ({
 
   const [isUploadingCover, setIsUploadingCover] = useState(false);
   const [coverUploadProgress, setCoverUploadProgress] = useState(0);
-  const [isUploadingPdf, setIsUploadingPdf] = useState(false);
-  const [pdfUploadProgress, setPdfUploadProgress] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
 
@@ -169,28 +160,6 @@ export const BookFormModal: React.FC<BookFormModalProps> = ({
       setError(err.message || 'Failed to upload cover image.');
     } finally {
       setIsUploadingCover(false);
-      e.target.value = '';
-    }
-  };
-
-  const handlePdfUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setIsUploadingPdf(true);
-    setPdfUploadProgress(0);
-    setError('');
-    try {
-      const res = await storageService.uploadFile(file, {
-        category: 'books/pdfs',
-        onProgress: (pct) => setPdfUploadProgress(pct),
-      });
-      setPdfFileName(res.fileName);
-      setPdfFileKey(res.fileKey);
-      setPdfUploadProgress(100);
-    } catch (err: any) {
-      setError(err.message || 'Failed to upload PDF.');
-    } finally {
-      setIsUploadingPdf(false);
       e.target.value = '';
     }
   };
@@ -494,30 +463,16 @@ export const BookFormModal: React.FC<BookFormModalProps> = ({
             </div>
 
             <div className="flex flex-col sm:flex-row gap-4">
-              {/* Cover Live Preview Card - Click to Crop */}
+              {/* Cover Live Preview Card */}
               <div
-                onClick={() => coverFileUrl && setIsCropperOpen(true)}
-                title={coverFileUrl ? 'Click to open interactive 3:4 crop & framing tool' : undefined}
-                className={`relative w-24 h-32 shrink-0 rounded-xl overflow-hidden bg-slate-900 border border-slate-200 dark:border-slate-700 shadow-md group ${
-                  coverFileUrl ? 'cursor-pointer ring-offset-2 hover:ring-2 hover:ring-indigo-500' : ''
-                }`}
+                className="relative w-24 h-32 shrink-0 rounded-xl overflow-hidden bg-slate-900 border border-slate-200 dark:border-slate-700 shadow-md"
               >
                 {coverFileUrl ? (
-                  <>
-                    <img
-                      src={coverFileUrl}
-                      alt="Cover preview"
-                      className="w-full h-full object-cover transition-all duration-300 group-hover:scale-105"
-                      style={{ objectPosition: coverImagePosition }}
-                    />
-                    <div className="absolute inset-x-0 bottom-0 py-0.5 px-1 bg-slate-950/80 backdrop-blur-sm text-[9px] text-center text-slate-300 font-mono truncate">
-                      {coverImagePosition}
-                    </div>
-                    <div className="absolute inset-0 bg-slate-950/40 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white text-[10px] font-medium gap-1">
-                      <Crop className="w-4 h-4 text-indigo-400" />
-                      <span>Adjust Crop</span>
-                    </div>
-                  </>
+                  <img
+                    src={coverFileUrl}
+                    alt="Cover preview"
+                    className="w-full h-full object-cover"
+                  />
                 ) : (
                   <div className="w-full h-full flex flex-col items-center justify-center text-slate-400 gap-1.5 p-2 text-center">
                     <UploadCloud className="w-6 h-6 text-slate-400 dark:text-slate-500" />
@@ -526,7 +481,7 @@ export const BookFormModal: React.FC<BookFormModalProps> = ({
                 )}
               </div>
 
-              {/* Cover Source Buttons & Position Settings */}
+              {/* Cover Source Buttons */}
               <div className="flex-1 space-y-3 min-w-0">
                 {/* Upload & Direct URL Controls */}
                 <div className="flex flex-wrap items-center gap-2">
@@ -553,17 +508,6 @@ export const BookFormModal: React.FC<BookFormModalProps> = ({
                     <LinkIcon className="w-3 h-3" />
                     <span>{isCustomUrlMode ? 'Hide URL' : 'Image URL'}</span>
                   </button>
-
-                  {coverFileUrl && (
-                    <button
-                      type="button"
-                      onClick={() => setIsCropperOpen(true)}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/60 dark:hover:bg-indigo-900/80 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800 transition-colors shadow-sm"
-                    >
-                      <Crop className="w-3.5 h-3.5" />
-                      <span>Adjust Crop & Framing</span>
-                    </button>
-                  )}
 
                   <span className="text-[10px] text-slate-500">JPG, PNG, WebP</span>
                 </div>
@@ -597,138 +541,6 @@ export const BookFormModal: React.FC<BookFormModalProps> = ({
                     />
                   </div>
                 )}
-
-                {/* Cover Image Position Options */}
-                {coverFileUrl && (
-                  <div className="space-y-2 pt-2 border-t border-slate-200/80 dark:border-white/10">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                        <Focus className="w-3.5 h-3.5 text-indigo-500" />
-                        <span>Cover Image Position (Focal Point)</span>
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => setIsCropperOpen(true)}
-                        className="text-[11px] font-semibold text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1"
-                      >
-                        <Crop className="w-3 h-3" />
-                        <span>Move Crop Rectangle</span>
-                      </button>
-                    </div>
-
-                    <div className="flex flex-wrap items-center gap-3">
-                      {/* Presets: Top, Center, Bottom */}
-                      <div className="flex items-center gap-1">
-                        {[
-                          { id: 'top', label: 'Top', icon: <ArrowUp className="w-3 h-3" /> },
-                          { id: 'center', label: 'Center', icon: <Focus className="w-3 h-3" /> },
-                          { id: 'bottom', label: 'Bottom', icon: <ArrowDown className="w-3 h-3" /> },
-                        ].map((preset) => (
-                          <button
-                            key={preset.id}
-                            type="button"
-                            onClick={() => setCoverImagePosition(preset.id)}
-                            className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium transition-all ${
-                              coverImagePosition === preset.id
-                                ? 'bg-indigo-600 text-white shadow-sm shadow-indigo-500/20'
-                                : 'bg-slate-200/80 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-700'
-                            }`}
-                          >
-                            {preset.icon}
-                            <span>{preset.label}</span>
-                          </button>
-                        ))}
-                      </div>
-
-                      <div className="h-4 w-px bg-slate-300 dark:bg-white/10 hidden sm:block" />
-
-                      {/* 9-Point Alignment Matrix */}
-                      <div className="flex items-center gap-2">
-                        <div className="grid grid-cols-3 gap-1 p-1 bg-slate-200/80 dark:bg-slate-900 rounded-lg border border-slate-300 dark:border-slate-800">
-                          {[
-                            { id: 'left top', title: 'Top Left' },
-                            { id: 'top', title: 'Top Center' },
-                            { id: 'right top', title: 'Top Right' },
-                            { id: 'left', title: 'Center Left' },
-                            { id: 'center', title: 'Center' },
-                            { id: 'right', title: 'Center Right' },
-                            { id: 'left bottom', title: 'Bottom Left' },
-                            { id: 'bottom', title: 'Bottom Center' },
-                            { id: 'right bottom', title: 'Bottom Right' },
-                          ].map((pos) => (
-                            <button
-                              key={pos.id}
-                              type="button"
-                              title={pos.title}
-                              onClick={() => setCoverImagePosition(pos.id)}
-                              className={`w-4 h-4 rounded-sm transition-all flex items-center justify-center ${
-                                coverImagePosition === pos.id
-                                  ? 'bg-indigo-600 ring-1 ring-indigo-400'
-                                  : 'bg-slate-300 dark:bg-slate-700 hover:bg-indigo-400/50'
-                              }`}
-                            >
-                              <span className={`w-1 h-1 rounded-full ${coverImagePosition === pos.id ? 'bg-white' : 'bg-transparent'}`} />
-                            </button>
-                          ))}
-                        </div>
-                        <span className="text-[10px] text-slate-500">9-Point Grid</span>
-                      </div>
-                    </div>
-
-                    <p className="text-[10px] text-slate-500 dark:text-slate-400">
-                      Click <strong>Adjust Crop & Framing</strong> to drag a 3:4 rectangular box over your image, or pick a preset alignment.
-                    </p>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* PDF Attachment Upload */}
-          <div className="p-3.5 sm:p-4 rounded-xl bg-slate-50/80 dark:bg-white/[0.02] border border-slate-200/80 dark:border-white/10 space-y-2">
-            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
-              Attach PDF (R2)
-            </label>
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-slate-100 dark:bg-slate-800/80 border border-dashed border-slate-300 dark:border-slate-700 flex items-center justify-center text-slate-400">
-                <FileText className="w-5 h-5" />
-              </div>
-              <div className="flex-1">
-                <input
-                  type="file"
-                  id="book-pdf-input"
-                  accept="application/pdf"
-                  onChange={handlePdfUpload}
-                  className="hidden"
-                />
-                <label
-                  htmlFor="book-pdf-input"
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700 cursor-pointer transition-colors"
-                >
-                  <UploadCloud className="w-3.5 h-3.5" />
-                  <span>{isUploadingPdf ? `Uploading (${pdfUploadProgress}%)` : pdfFileName ? 'Replace PDF' : 'Upload PDF'}</span>
-                </label>
-                {isUploadingPdf && (
-                  <div className="w-full space-y-1 pt-1">
-                    <div className="flex items-center justify-between text-[11px] text-indigo-600 dark:text-indigo-400 font-medium">
-                      <span>Uploading PDF document...</span>
-                      <span>{pdfUploadProgress}%</span>
-                    </div>
-                    <div className="w-full h-1.5 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-indigo-600 dark:bg-indigo-500 rounded-full transition-all duration-150 ease-out"
-                        style={{ width: `${pdfUploadProgress}%` }}
-                      />
-                    </div>
-                  </div>
-                )}
-                {pdfFileName && !isUploadingPdf && (
-                  <p className="text-[11px] text-emerald-600 dark:text-emerald-400 flex items-center gap-1 mt-1 truncate">
-                    <CheckCircle2 className="w-3 h-3 shrink-0" />
-                    <span className="truncate">{pdfFileName}</span>
-                  </p>
-                )}
-                <p className="text-[10px] text-slate-500 mt-0.5">PDF documents up to 50MB</p>
               </div>
             </div>
           </div>
@@ -744,41 +556,6 @@ export const BookFormModal: React.FC<BookFormModalProps> = ({
           </Button>
         </div>
       </form>
-
-      {/* Interactive 3:4 Rectangular Cropper & Framing Modal */}
-      {isCropperOpen && coverFileUrl && (
-        <CoverCropModal
-          isOpen={isCropperOpen}
-          onClose={() => setIsCropperOpen(false)}
-          imageUrl={coverFileUrl}
-          initialPosition={coverImagePosition}
-          bookTitle={title || 'Book Title'}
-          onSave={async (newPos, croppedUrl) => {
-            setCoverImagePosition(newPos);
-            if (croppedUrl) {
-              if (croppedUrl.startsWith('data:')) {
-                try {
-                  setIsUploadingCover(true);
-                  const safeTitle = (title || 'cover').replace(/[^a-zA-Z0-9]/g, '_');
-                  const uploadRes = await storageService.uploadDataUrl(
-                    croppedUrl,
-                    `${safeTitle}_crop_${Date.now()}.jpg`,
-                    { category: 'books/covers', onProgress: (pct) => setCoverUploadProgress(pct) }
-                  );
-                  setCoverFileUrl(uploadRes.fileUrl);
-                  setCoverFileKey(uploadRes.fileKey);
-                } catch (err: any) {
-                  setError(err.message || 'Failed to upload cropped cover to storage.');
-                } finally {
-                  setIsUploadingCover(false);
-                }
-              } else {
-                setCoverFileUrl(croppedUrl);
-              }
-            }
-          }}
-        />
-      )}
     </Modal>
   );
 };
